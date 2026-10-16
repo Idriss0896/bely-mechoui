@@ -527,3 +527,50 @@ h2 { font-size: clamp(25px, 4vw, 33px); letter-spacing: -.035em; line-height: 1;
   .header-motion-note { padding: 8px 10px 8px 8px; right: 18px; top: 250px; transform: scale(.86); transform-origin: right center; }
   .scroll-brand { top: 12px; }
 }
+
+/* Restaurant team story */
+.team-story { align-items: center; background: #eee3d3; border: 1px solid rgba(123,87,57,.12); border-radius: 28px; display: grid; gap: 28px; grid-template-columns: minmax(220px, .78fr) minmax(360px, 1.22fr); margin: 70px 0; overflow: hidden; padding: 28px; position: relative; }
+.team-story::before { border: 1px solid rgba(139,148,100,.26); border-radius: 50%; content: ''; height: 340px; position: absolute; right: -155px; top: -190px; width: 340px; }
+.team-story__copy { position: relative; z-index: 1; }
+.team-story__copy h2 { color: var(--ink); font-family: 'Playfair Display', serif; font-size: clamp(31px, 4vw, 50px); font-weight: 500; letter-spacing: -.04em; line-height: .88; margin: 12px 0 16px; }
+.team-story__copy h2 i { color: var(--coral-dark); }
+.team-story__copy p { color: #66584e; font-size: 13px; line-height: 1.65; margin: 0; max-width: 280px; }
+.team-story__promise { align-items: center; color: var(--coral-dark); display: inline-flex; font-size: 10px; font-weight: 800; gap: 7px; letter-spacing: .1em; margin-top: 22px; text-transform: uppercase; }
+.team-story__promise svg { color: var(--gold); }
+.team-story__gallery { display: grid; gap: 12px; grid-template-columns: 1.06fr .94fr; min-height: 360px; position: relative; z-index: 1; }
+.team-photo { border: 4px solid rgba(255,253,249,.8); border-radius: 19px; box-shadow: 0 16px 32px rgba(56,35,20,.14); margin: 0; overflow: hidden; position: relative; }
+.team-photo img { display: block; height: 100%; object-fit: cover; transition: transform .7s ease; width: 100%; }
+.team-photo:hover img { transform: scale(1.05); }
+.team-photo figcaption { background: rgba(33,27,24,.66); bottom: 9px; color: #fff8ef; font-size: 9px; font-weight: 700; left: 9px; letter-spacing: .08em; padding: 7px 9px; position: absolute; text-transform: uppercase; }
+.team-photo--duo { animation: team-card-float 7s ease-in-out infinite; grid-row: span 2; }
+.team-photo--duo img { object-position: 50% 30%; }
+.team-photo--collective { animation: team-card-float 7.5s .8s ease-in-out infinite; min-height: 178px; }
+.team-photo--collective img { object-position: 50% 28%; }
+.team-photo--service { animation: team-card-float 8s 1.4s ease-in-out infinite; min-height: 162px; }
+.team-photo--service img { object-position: 52% 32%; }
+@keyframes team-card-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+
+/* The handmade note needs a stable, high-contrast mobile position. */
+@media (max-width: 720px) {
+  .app-header { min-height: 630px; }
+  .header-motion-note { backdrop-filter: blur(16px) saturate(135%); -webkit-backdrop-filter: blur(16px) saturate(135%); background: rgba(33,27,24,.8); border-color: rgba(233,182,111,.42); bottom: 31px; left: 20px; padding: 9px 12px 9px 9px; right: auto; top: auto; transform: none; }
+  .header-motion-note strong { font-size: 14px; }
+  .header-motion-note small { color: rgba(255,248,239,.74); font-size: 9px; }
+  .header-motion-note__icon { height: 30px; width: 30px; }
+  .header-motion-note i { height: 5px; width: 5px; }
+  .team-story { display: block; margin: 54px 0; padding: 22px; }
+  .team-story__copy p { max-width: 340px; }
+  .team-story__gallery { gap: 9px; grid-template-columns: 1.04fr .96fr; margin-top: 25px; min-height: 330px; }
+  .team-photo { border-radius: 16px; }
+  .team-photo--collective { min-height: 160px; }
+  .team-photo--service { min-height: 148px; }
+  .team-photo figcaption { font-size: 8px; left: 7px; padding: 6px 7px; }
+}
+@media (max-width: 380px) {
+  .header-motion-note { bottom: 24px; left: 15px; }
+  .header-motion-note strong { font-size: 13px; }
+  .team-story { border-radius: 22px; padding: 17px; }
+  .team-story__gallery { min-height: 284px; }
+  .team-photo--collective { min-height: 136px; }
+  .team-photo--service { min-height: 128px; }
+}
