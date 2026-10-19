@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { createRoot } from "react-dom/client";
 import { Bell, BellRing, CalendarDays, Check, ChefHat, ChevronRight, Clock3, Flame, Heart, Home, ImagePlus, Info, Leaf, LayoutDashboard, LogOut, MapPin, Plus, Save, Search, Share2, SlidersHorizontal, Sparkles, Trash2, Utensils, UtensilsCrossed, X } from "lucide-react";
 import { days, featuredDish, formatPrice, menu, type DayKey, type Dish } from "./data/menu";
+import { mountDishCardMotion, mountLandingMotion } from "./animations/landingMotion";
 import "./styles.css";
 
 const defaultCategories = ["Grillades", "Boissons", "Plats", "Fast-food", "Accompagnement"];
@@ -122,6 +123,7 @@ function AdminApp() {
 }
 
 function App() {
+  const appRoot = useRef<HTMLDivElement>(null);
   const [isBooting, setIsBooting] = useState(true);
   const [menuState] = useState<MenuState>(loadMenu);
   const [categories] = useState<string[]>(loadCategories);
@@ -149,6 +151,16 @@ function App() {
     const timer = window.setTimeout(() => setIsBooting(false), 1650);
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!appRoot.current) return;
+    return mountLandingMotion(appRoot.current);
+  }, []);
+
+  useEffect(() => {
+    if (!appRoot.current) return;
+    return mountDishCardMotion(appRoot.current);
+  }, [filteredDishes]);
 
   useEffect(() => {
     document.body.style.overflow = selectedDish ? "hidden" : "";
@@ -186,7 +198,7 @@ function App() {
   }, []);
 
   return (
-    <div className="app-shell" id="accueil">
+    <div className="app-shell" id="accueil" ref={appRoot}>
       {isBooting && <div className="splash-screen" role="status" aria-label="Ouverture de Bely Mechoui"><div className="splash-screen__rings" /><div className="splash-screen__logo"><img src="/logo-bely-mechoui.jpg" alt="" /><span><ChefHat size={16} /></span></div><strong>BELY <i>MECHOUI</i></strong><small>LE GOÛT DU FAIT MAISON</small><div className="splash-screen__loader"><i /><i /><i /></div></div>}
       <div className={`scroll-brand ${hasScrolled ? "is-visible" : ""} brand-color-${brandColor}`} aria-hidden={!hasScrolled}><span className="scroll-brand__dot"><ChefHat size={14} /></span><strong>BELY <i>MECHOUI</i></strong></div>
       <header className="app-header">
@@ -215,7 +227,7 @@ function App() {
 
         <section className="signature-card" aria-labelledby="signature-title"><div className="signature-card__image"><img src={featuredDish.image} alt="Spécialité de la maison : méchoui de mouton" /><span>Signature</span></div><div className="signature-card__body"><span className="eyebrow">La spécialité de la maison</span><h2 id="signature-title">Méchoui<br /><i>de mouton</i></h2><p>Rôti lentement, tendre à cœur, accompagné des garnitures du jour.</p><button className="text-button" onClick={() => setSelectedDish(featuredDish)}>Voir le plat <ChevronRight size={16} /></button></div></section>
 
-        <section className="team-story" aria-labelledby="team-title"><div className="team-story__copy"><span className="eyebrow">Chez Bely</span><h2 id="team-title">Une équipe,<br /><i>un même goût.</i></h2><p>Des mains passionnées, une attention à chaque détail et la fierté de vous servir chaque jour.</p><span className="team-story__promise"><Sparkles size={15} /> Chaque jour, fait maison</span></div><div className="team-story__gallery"><figure className="team-photo team-photo--duo"><img src="/bely-team-duo.jpg" alt="Deux membres de l'équipe Bely Mechoui" /><figcaption>Le service avec le sourire</figcaption></figure><figure className="team-photo team-photo--collective"><img src="/bely-team-collective.jpg" alt="L'équipe Bely Mechoui" /><figcaption>L'équipe Bely Mechoui</figcaption></figure><figure className="team-photo team-photo--service"><img src="/bely-team-service.jpg" alt="Les membres de l'équipe Bely Mechoui" /></figure></div></section>
+        <section className="team-story" aria-labelledby="team-title"><div className="team-story__copy"><span className="eyebrow">Chez Bely</span><h2 id="team-title">Une équipe,<br /><i>un même goût.</i></h2><p>Des mains passionnées, une attention à chaque détail et la fierté de vous servir chaque jour.</p><span className="team-story__promise"><Sparkles size={15} /> Chaque jour, fait maison</span></div><div className="team-story__gallery"><figure className="team-photo team-photo--duo"><img src="/bely-team-duo.jpg" alt="Deux membres de l'équipe Bely Mechoui" loading="lazy" /><figcaption>Le service avec le sourire</figcaption></figure><figure className="team-photo team-photo--collective"><img src="/bely-team-collective.jpg" alt="L'équipe Bely Mechoui" loading="lazy" /><figcaption>L'équipe Bely Mechoui</figcaption></figure><figure className="team-photo team-photo--service"><img src="/bely-team-service.jpg" alt="Les membres de l'équipe Bely Mechoui" loading="lazy" /></figure></div></section>
 
         <section className="visit-card" id="infos"><div><span className="eyebrow">Nous trouver</span><h2>À bientôt<br /><i>à Sebenikoro.</i></h2></div><div className="visit-card__details"><span><MapPin size={17} /> Sebenikoro, Bamako, Mali</span><span><Clock3 size={17} /> {restaurantHours.days} · {restaurantHours.opening}</span><a href="https://www.facebook.com/salamata.soumare.3" target="_blank" rel="noreferrer">Suivez-nous sur Facebook <ChevronRight size={15} /></a></div></section>
       </main>

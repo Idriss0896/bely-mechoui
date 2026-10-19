@@ -574,3 +574,32 @@ h2 { font-size: clamp(25px, 4vw, 33px); letter-spacing: -.035em; line-height: 1;
   .team-photo--collective { min-height: 136px; }
   .team-photo--service { min-height: 128px; }
 }
+
+/* Keep motion focused on deliberate interactions and viewport reveals. */
+.hero-dish,
+.header-brand-lockup,
+.brand__title,
+.scroll-brand strong,
+.header-motion-note,
+.header-motion-note i,
+.footer-motion__orbit,
+.footer-motion__spark,
+.team-photo--duo,
+.team-photo--collective,
+.team-photo--service {
+  animation: none;
+}
+
+.dish-card:focus-visible,
+.hero-cta:focus-visible,
+.text-button:focus-visible,
+.visit-card a:focus-visible,
+.bottom-nav a:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 4px;
+}
+
+@media (hover: none) {
+  .dish-card:hover { box-shadow: none; transform: none; }
+  .dish-card:hover img, .team-photo:hover img, .signature-card:hover img { transform: none; }
+}
