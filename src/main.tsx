@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { createRoot } from "react-dom/client";
-import { Bell, BellRing, CalendarDays, Check, ChefHat, ChevronRight, Clock3, Flame, Heart, Home, ImagePlus, Info, Leaf, LayoutDashboard, LogOut, MapPin, Plus, Save, Search, Share2, SlidersHorizontal, Sparkles, Trash2, Utensils, UtensilsCrossed, X } from "lucide-react";
+import { Beef, Bell, BellRing, CalendarDays, Check, ChefHat, ChevronRight, Clock3, CookingPot, CupSoda, Flame, Heart, Home, ImagePlus, Info, LayoutDashboard, LogOut, MapPin, Plus, Salad, Sandwich, Save, Search, Share2, SlidersHorizontal, Sparkles, Trash2, Utensils, UtensilsCrossed, X } from "lucide-react";
 import { days, featuredDish, formatPrice, menu, type DayKey, type Dish } from "./data/menu";
 import { mountDishCardMotion, mountLandingMotion } from "./animations/landingMotion";
 import "./styles.css";
@@ -41,11 +41,11 @@ function saveAdminData(nextMenu: MenuState, nextCategories: string[], hours: { o
 }
 
 const categoryIcons = {
-  Grillades: Flame,
-  Boissons: Sparkles,
-  Plats: Utensils,
-  "Fast-food": ChefHat,
-  Accompagnement: Leaf,
+  Grillades: Beef,
+  Boissons: CupSoda,
+  Plats: CookingPot,
+  "Fast-food": Sandwich,
+  Accompagnement: Salad,
 };
 
 const adminDays = days;
@@ -219,9 +219,9 @@ function App() {
         <div className="content-topline"><span>Menu digital</span><span>{restaurantHours.days} · {restaurantHours.opening.replace("h à ", ":00 — ").replace("h", ":00")}</span></div>
         <div className="search-row"><label className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Rechercher un plat" aria-label="Rechercher un plat" /></label><button className="icon-button filter-button" aria-label="Filtrer les plats"><SlidersHorizontal size={18} /></button></div>
 
-        <section className="categories-section" aria-labelledby="categories-title"><div className="section-title"><div><span className="eyebrow">Découvrir</span><h2 id="categories-title">Nos catégories</h2></div><span className="section-count">{filteredDishes.length} plats</span></div><div className="category-list" role="tablist" aria-label="Catégories de plats">{categories.map((category) => { const Icon = categoryIcons[category as keyof typeof categoryIcons] ?? ChefHat; const count = dayDishes.filter((dish) => dish.category === category).length; return <button key={category} className={activeCategory === category ? "is-active" : ""} role="tab" aria-selected={activeCategory === category} onClick={() => setActiveCategory(category)}><span className="category-icon"><Icon size={15} /></span><span>{category}</span><small>{count}</small></button>; })}</div></section>
+        <section className="categories-section" aria-labelledby="categories-title"><div className="section-title"><div><span className="eyebrow">Découvrir</span><h2 id="categories-title">Nos catégories</h2></div><span className="section-count">{filteredDishes.length} plats</span></div><div className="category-list" role="tablist" aria-label="Catégories de plats">{categories.map((category) => { const Icon = categoryIcons[category as keyof typeof categoryIcons] ?? ChefHat; const count = dayDishes.filter((dish) => dish.category === category).length; return <button key={category} className={activeCategory === category ? "is-active" : ""} role="tab" aria-selected={activeCategory === category} onClick={() => setActiveCategory(category)}><span className="category-icon"><Icon size={17} /></span><span className="category-label">{category}</span><small>{count}</small></button>; })}</div></section>
 
-        <section className="day-section" aria-labelledby="day-title"><div className="section-title"><div><span className="eyebrow">La carte du jour</span><h2 id="day-title">Choisir un jour</h2></div><span className="section-count">{days.find((day) => day.key === activeDay)?.label}</span></div><div className="day-list" role="tablist" aria-label="Choisir un jour">{days.map((day, index) => <button key={day.key} className={activeDay === day.key ? "is-active" : ""} role="tab" aria-selected={activeDay === day.key} onClick={() => setActiveDay(day.key)}><span className="day-index">0{index + 2}</span><strong>{day.shortLabel}</strong><span>{day.label.slice(0, 3)}</span></button>)}</div></section>
+        <section className="day-section" aria-labelledby="day-title"><div className="section-title"><div><span className="eyebrow">La carte du jour</span><h2 id="day-title">Choisir un jour</h2></div><span className="section-count">{days.find((day) => day.key === activeDay)?.label}</span></div><div className="day-list" role="tablist" aria-label="Choisir un jour">{days.map((day, index) => <button key={day.key} className={activeDay === day.key ? "is-active" : ""} role="tab" aria-selected={activeDay === day.key} onClick={() => setActiveDay(day.key)}><span className="day-marker"><CalendarDays size={13} /></span><strong>{day.shortLabel}</strong><span>{day.label.slice(0, 3)}</span><em>0{index + 2}</em></button>)}</div></section>
 
         <section className="popular-section" id="menu" aria-labelledby="popular-title"><div className="section-title"><div><span className="eyebrow">Les favoris</span><h2 id="popular-title">Populaire à Bely</h2></div><span className="section-count">{filteredDishes.length} résultats</span></div><div className="dish-grid">{filteredDishes.length ? filteredDishes.map((dish, index) => <DishCard key={`${activeDay}-${dish.name}`} dish={dish} onOpen={setSelectedDish} onToggleFavorite={toggleFavorite} isFavorite={favoriteNames.includes(dish.name)} compact={index > 0} />) : <p className="empty-state">Aucun plat ne correspond à cette recherche.</p>}</div></section>
 
