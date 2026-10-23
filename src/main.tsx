@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { createRoot } from "react-dom/client";
-import { Beef, Bell, BellRing, CalendarDays, Check, ChefHat, ChevronRight, Clock3, CookingPot, CupSoda, Flame, Heart, Home, ImagePlus, Info, LayoutDashboard, LogOut, MapPin, Plus, Salad, Sandwich, Save, Search, Share2, SlidersHorizontal, Sparkles, Trash2, Utensils, UtensilsCrossed, X } from "lucide-react";
+import { Beef, Bell, BellRing, CalendarDays, Check, ChefHat, ChevronRight, Clock3, CookingPot, CupSoda, Flame, Heart, Home, ImagePlus, Info, LayoutDashboard, LogOut, MapPin, MessageCircle, Navigation, Phone, Plus, Salad, Sandwich, Save, Search, Share2, SlidersHorizontal, Sparkles, Trash2, Utensils, UtensilsCrossed, X } from "lucide-react";
 import { days, featuredDish, formatPrice, menu, type DayKey, type Dish } from "./data/menu";
 import { mountDishCardMotion, mountLandingMotion } from "./animations/landingMotion";
 import "./styles.css";
@@ -10,6 +10,24 @@ const MENU_STORAGE_KEY = "bely-mechoui-menu";
 const CATEGORIES_STORAGE_KEY = "bely-mechoui-categories";
 const HOURS_STORAGE_KEY = "bely-mechoui-hours";
 const defaultHours = { opening: "10h à 20h", days: "Mardi au Dimanche" };
+
+/**
+ * Coordonnées du restaurant.
+ * `phone`   : numéro affiché et composé (format international, ex. "+223 76 00 00 00")
+ * `whatsapp`: numéro au format wa.me, sans "+" ni espaces (ex. "22376000000")
+ * Laisser vide masque le bouton correspondant.
+ */
+const CONTACT = {
+  phone: "+223 72 84 16 16",
+  whatsapp: "22372841616",
+  maps: "https://www.google.com/maps/search/?api=1&query=Bely+Mechoui+Sebenikoro+Bamako",
+  facebook: "https://www.facebook.com/salamata.soumare.3",
+};
+
+const whatsappLink = (dishName?: string) =>
+  `https://wa.me/${CONTACT.whatsapp}?text=${encodeURIComponent(dishName ? `Bonjour Bely Mechoui, je souhaite commander : ${dishName}.` : "Bonjour Bely Mechoui, je souhaite commander.")}`;
+
+const plural = (count: number, singular: string, pluriel = `${singular}s`) => `${count} ${count > 1 ? pluriel : singular}`;
 
 type MenuState = Record<DayKey, Dish[]>;
 
@@ -56,7 +74,7 @@ const initialNotifications = [
 ];
 
 function Brand() {
-  return <a className="brand" href="#accueil" aria-label="Bely Mechoui, accueil"><span className="brand__logo"><img src="/logo-bely-mechoui.jpg" alt="Bely Mechoui" /><span className="brand__logo-mark"><ChefHat size={12} /></span></span></a>;
+  return <a className="brand" href="#accueil" aria-label="Bely Mechoui, accueil"><span className="brand__logo"><img src="/logo-bely-wordmark.png" alt="Bely Mechoui" width={744} height={352} /><span className="brand__logo-mark"><ChefHat size={12} /></span></span></a>;
 }
 
 function getTodayMenuDay(): DayKey {
@@ -75,11 +93,39 @@ function DishCard({ dish, onOpen, onToggleFavorite, isFavorite, compact = false 
 }
 
 function DishDetails({ dish, onClose }: { dish: Dish; onClose: () => void }) {
+  const [shared, setShared] = useState(false);
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    closeRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  const share = async () => {
+    const url = `${window.location.origin}/#menu`;
+    const text = `${dish.name} — ${formatPrice(dish.price)} · Bely Mechoui`;
+    try {
+      if (navigator.share) { await navigator.share({ title: dish.name, text, url }); return; }
+      await navigator.clipboard.writeText(`${text} ${url}`);
+      setShared(true);
+      window.setTimeout(() => setShared(false), 1800);
+    } catch { /* partage annulé par l'utilisateur */ }
+  };
+
   return (
     <div className="detail-backdrop" role="presentation" onClick={onClose}>
       <section className="detail-sheet" role="dialog" aria-modal="true" aria-labelledby="dish-detail-title" onClick={(event) => event.stopPropagation()}>
-        <div className="detail-sheet__image"><img src={dish.image} alt={dish.name} /><button className="icon-button icon-button--light" aria-label="Fermer" onClick={onClose}><X size={19} /></button><button className="icon-button icon-button--light detail-sheet__share" aria-label="Partager"><Share2 size={17} /></button></div>
-        <div className="detail-sheet__body"><span className="eyebrow">{dish.category}</span><h2 id="dish-detail-title">{dish.name}</h2><p>{dish.description}</p><div className="detail-sheet__facts"><span><Clock3 size={16} /> Préparé avec soin</span><span><Sparkles size={16} /> Signature maison</span></div><div className="detail-sheet__footer"><strong>{formatPrice(dish.price)}</strong><span>Au menu aujourd'hui</span></div></div>
+        <div className="detail-sheet__image"><img src={dish.image} alt={dish.name} /><button ref={closeRef} className="icon-button icon-button--light" aria-label="Fermer" onClick={onClose}><X size={19} /></button><button className="icon-button icon-button--light detail-sheet__share" aria-label={`Partager ${dish.name}`} onClick={share}>{shared ? <Check size={17} /> : <Share2 size={17} />}</button></div>
+        <div className="detail-sheet__body"><span className="eyebrow">{dish.category}</span><h2 id="dish-detail-title">{dish.name}</h2><p>{dish.description}</p><div className="detail-sheet__facts"><span><Clock3 size={16} /> Préparé avec soin</span><span><Sparkles size={16} /> Signature maison</span></div><div className="detail-sheet__footer"><strong>{formatPrice(dish.price)}</strong><span>Au menu aujourd'hui</span></div>
+          <div className="detail-sheet__actions">
+            {CONTACT.whatsapp ? <a className="detail-cta detail-cta--primary" href={whatsappLink(dish.name)} target="_blank" rel="noreferrer"><Utensils size={16} /> Commander sur WhatsApp</a> : null}
+            {CONTACT.phone ? <a className="detail-cta" href={`tel:${CONTACT.phone.replace(/\s+/g, "")}`}><Phone size={16} /> Appeler</a> : null}
+            <a className="detail-cta" href={CONTACT.maps} target="_blank" rel="noreferrer"><Navigation size={16} /> Itinéraire</a>
+          </div>
+          {shared && <p className="detail-sheet__toast" role="status">Lien copié</p>}
+        </div>
       </section>
     </div>
   );
@@ -131,6 +177,7 @@ function App() {
   const [activeDay, setActiveDay] = useState<DayKey>(getTodayMenuDay);
   const [activeCategory, setActiveCategory] = useState("Grillades");
   const [query, setQuery] = useState("");
+  const [sortMode, setSortMode] = useState<"default" | "price-asc" | "price-desc">("default");
   const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(initialNotifications.length);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -143,7 +190,12 @@ function App() {
   const dayDishes = useMemo(() => menuState[activeDay], [activeDay, menuState]);
   const allDishes = useMemo(() => Array.from(new Map(Object.values(menuState).flat().map((dish) => [dish.name, dish])).values()), [menuState]);
   const favoriteDishes = useMemo(() => favoriteNames.map((name) => allDishes.find((dish) => dish.name === name)).filter((dish): dish is Dish => Boolean(dish)), [allDishes, favoriteNames]);
-  const filteredDishes = useMemo(() => dayDishes.filter((dish) => (activeCategory === "Tout" || dish.category === activeCategory) && `${dish.name} ${dish.description}`.toLowerCase().includes(query.toLowerCase())), [activeCategory, dayDishes, query]);
+  const filteredDishes = useMemo(() => {
+    const matches = dayDishes.filter((dish) => (activeCategory === "Tout" || dish.category === activeCategory) && `${dish.name} ${dish.description}`.toLowerCase().includes(query.toLowerCase()));
+    if (sortMode === "price-asc") return [...matches].sort((a, b) => a.price - b.price);
+    if (sortMode === "price-desc") return [...matches].sort((a, b) => b.price - a.price);
+    return matches;
+  }, [activeCategory, dayDishes, query, sortMode]);
 
   const toggleFavorite = (dish: Dish) => setFavoriteNames((current) => current.includes(dish.name) ? current.filter((name) => name !== dish.name) : [...current, dish.name]);
 
@@ -208,7 +260,7 @@ function App() {
           <small>LE GOÛT DU FAIT MAISON</small>
         </div>
         <div className="header-orbit header-orbit--one" /><div className="header-orbit header-orbit--two" /><span className="header-spark header-spark--one" /><span className="header-spark header-spark--two" /><span className="header-spark header-spark--three" />
-        <div className="app-header__top"><Brand /><div className="header-actions"><div className="header-icon-group"><div className="favorite-wrap"><button className={`icon-button icon-button--header ${favoritesOpen ? "is-open" : ""}`} aria-label="Mes plats favoris" aria-expanded={favoritesOpen} onClick={() => { setFavoritesOpen((open) => !open); setNotificationsOpen(false); }}><Heart size={18} fill={favoriteDishes.length ? "currentColor" : "none"} />{favoriteDishes.length > 0 && <span className="notification-badge favorite-badge">{favoriteDishes.length}</span>}</button>{favoritesOpen && <div className="favorites-panel" role="dialog" aria-label="Mes plats favoris"><div className="notification-panel__head"><div><span className="eyebrow eyebrow--light">Mes envies</span><strong>Plats favoris</strong></div><Heart size={18} /></div>{favoriteDishes.length ? favoriteDishes.map((dish) => <button className="favorite-item" key={dish.name} onClick={() => { setSelectedDish(dish); setFavoritesOpen(false); }}><img src={dish.image} alt="" /><span><strong>{dish.name}</strong><small>{formatPrice(dish.price)}</small></span><Heart size={15} fill="currentColor" /></button>) : <p className="panel-empty">Appuie sur le cœur d’un plat pour le retrouver ici.</p>}</div>}</div></div><div className="notification-wrap"><button className={`icon-button icon-button--header ${notificationsOpen ? "is-open" : ""}`} aria-label="Notifications" aria-expanded={notificationsOpen} onClick={() => { const willOpen = !notificationsOpen; setNotificationsOpen(willOpen); setUnreadNotifications(willOpen ? 0 : unreadNotifications); setFavoritesOpen(false); }}><Bell size={18} />{unreadNotifications > 0 && <span className="notification-badge">{unreadNotifications}</span>}</button>{notificationsOpen && <div className="notification-panel" role="dialog" aria-label="Notifications"><div className="notification-panel__head"><div><span className="eyebrow eyebrow--light">À la maison</span><strong>Les nouvelles de Bely</strong></div><BellRing size={18} /></div>{initialNotifications.map((notification) => <div className="notification-item" key={notification.title}><span className="notification-item__icon"><Check size={14} /></span><span><strong>{notification.title}</strong><small>{notification.text}</small><em>{notification.time}</em></span></div>)}<button className="notification-panel__close" onClick={() => setNotificationsOpen(false)}>Tout est lu</button></div>}</div></div></div>
+        <div className="app-header__top"><Brand /><div className="header-actions"><div className="header-icon-group">{CONTACT.whatsapp && <a className="icon-button icon-button--header icon-button--wa" href={whatsappLink()} target="_blank" rel="noreferrer" aria-label="Commander sur WhatsApp"><MessageCircle size={18} /></a>}<div className="favorite-wrap"><button className={`icon-button icon-button--header ${favoritesOpen ? "is-open" : ""}`} aria-label="Mes plats favoris" aria-expanded={favoritesOpen} onClick={() => { setFavoritesOpen((open) => !open); setNotificationsOpen(false); }}><Heart size={18} fill={favoriteDishes.length ? "currentColor" : "none"} />{favoriteDishes.length > 0 && <span className="notification-badge favorite-badge">{favoriteDishes.length}</span>}</button>{favoritesOpen && <div className="favorites-panel" role="dialog" aria-label="Mes plats favoris"><div className="notification-panel__head"><div><span className="eyebrow eyebrow--light">Mes envies</span><strong>Plats favoris</strong></div><Heart size={18} /></div>{favoriteDishes.length ? favoriteDishes.map((dish) => <button className="favorite-item" key={dish.name} onClick={() => { setSelectedDish(dish); setFavoritesOpen(false); }}><img src={dish.image} alt="" /><span><strong>{dish.name}</strong><small>{formatPrice(dish.price)}</small></span><Heart size={15} fill="currentColor" /></button>) : <p className="panel-empty">Appuie sur le cœur d’un plat pour le retrouver ici.</p>}</div>}</div></div><div className="notification-wrap"><button className={`icon-button icon-button--header ${notificationsOpen ? "is-open" : ""}`} aria-label="Notifications" aria-expanded={notificationsOpen} onClick={() => { const willOpen = !notificationsOpen; setNotificationsOpen(willOpen); setUnreadNotifications(willOpen ? 0 : unreadNotifications); setFavoritesOpen(false); }}><Bell size={18} />{unreadNotifications > 0 && <span className="notification-badge">{unreadNotifications}</span>}</button>{notificationsOpen && <div className="notification-panel" role="dialog" aria-label="Notifications"><div className="notification-panel__head"><div><span className="eyebrow eyebrow--light">À la maison</span><strong>Les nouvelles de Bely</strong></div><BellRing size={18} /></div>{initialNotifications.map((notification) => <div className="notification-item" key={notification.title}><span className="notification-item__icon"><Check size={14} /></span><span><strong>{notification.title}</strong><small>{notification.text}</small><em>{notification.time}</em></span></div>)}<button className="notification-panel__close" onClick={() => setNotificationsOpen(false)}>Tout est lu</button></div>}</div></div></div>
         <div className="header-opening"><span className="header-opening__icon"><Clock3 size={15} /></span><span><strong>Ouvert de {restaurantHours.opening}</strong><small>{restaurantHours.days}</small></span></div>
         <div className="app-header__copy"><span className="eyebrow eyebrow--light"><ChefHat size={13} /> LE GOÛT DU FAIT MAISON</span><h1>La cuisine<br /><i>qui rassemble.</i></h1><p>Des plats généreux, préparés avec le feu et le cœur.</p><a className="hero-cta" href="#menu"><span>Découvrir la carte</span><ChevronRight size={16} /></a></div>
         <div className="hero-dish"><img src={featuredDish.image} alt="Méchoui de mouton" /><span className="hero-dish__glow" /></div>
@@ -217,19 +269,19 @@ function App() {
 
       <main className="app-content">
         <div className="content-topline"><span>Menu digital</span><span>{restaurantHours.days} · {restaurantHours.opening.replace("h à ", ":00 — ").replace("h", ":00")}</span></div>
-        <div className="search-row"><label className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Rechercher un plat" aria-label="Rechercher un plat" /></label><button className="icon-button filter-button" aria-label="Filtrer les plats"><SlidersHorizontal size={18} /></button></div>
+        <div className="search-row"><label className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Rechercher un plat" aria-label="Rechercher un plat" /></label><button className={`icon-button filter-button ${sortMode !== "default" ? "is-active" : ""}`} aria-label={sortMode === "default" ? "Trier par prix croissant" : sortMode === "price-asc" ? "Trier par prix décroissant" : "Revenir à l'ordre du menu"} title={sortMode === "price-asc" ? "Prix croissant" : sortMode === "price-desc" ? "Prix décroissant" : "Trier par prix"} onClick={() => setSortMode(sortMode === "default" ? "price-asc" : sortMode === "price-asc" ? "price-desc" : "default")}><SlidersHorizontal size={18} />{sortMode !== "default" && <span className="filter-button__state">{sortMode === "price-asc" ? "↑" : "↓"}</span>}</button></div>
 
-        <section className="categories-section" aria-labelledby="categories-title"><div className="section-title"><div><span className="eyebrow">Découvrir</span><h2 id="categories-title">Nos catégories</h2></div><span className="section-count">{filteredDishes.length} plats</span></div><div className="category-list" role="tablist" aria-label="Catégories de plats">{categories.map((category) => { const Icon = categoryIcons[category as keyof typeof categoryIcons] ?? ChefHat; const count = dayDishes.filter((dish) => dish.category === category).length; return <button key={category} className={activeCategory === category ? "is-active" : ""} role="tab" aria-selected={activeCategory === category} onClick={() => setActiveCategory(category)}><span className="category-icon"><Icon size={17} /></span><span className="category-label">{category}</span><small>{count}</small></button>; })}</div></section>
+        <section className="categories-section" aria-labelledby="categories-title"><div className="section-title"><div><span className="eyebrow">Découvrir</span><h2 id="categories-title">Nos catégories</h2></div><span className="section-count">{plural(filteredDishes.length, "plat")}</span></div><div className="category-list" role="tablist" aria-label="Catégories de plats">{categories.map((category) => { const Icon = categoryIcons[category as keyof typeof categoryIcons] ?? ChefHat; const count = dayDishes.filter((dish) => dish.category === category).length; return <button key={category} className={activeCategory === category ? "is-active" : ""} role="tab" aria-selected={activeCategory === category} onClick={() => setActiveCategory(category)}><span className="category-icon"><Icon size={17} /></span><span className="category-label">{category}</span><small>{count}</small></button>; })}</div></section>
 
         <section className="day-section" aria-labelledby="day-title"><div className="section-title"><div><span className="eyebrow">La carte du jour</span><h2 id="day-title">Choisir un jour</h2></div><span className="section-count">{days.find((day) => day.key === activeDay)?.label}</span></div><div className="day-list" role="tablist" aria-label="Choisir un jour">{days.map((day, index) => <button key={day.key} className={activeDay === day.key ? "is-active" : ""} role="tab" aria-selected={activeDay === day.key} onClick={() => setActiveDay(day.key)}><span className="day-marker"><CalendarDays size={13} /></span><strong>{day.shortLabel}</strong><span>{day.label.slice(0, 3)}</span><em>0{index + 2}</em></button>)}</div></section>
 
-        <section className="popular-section" id="menu" aria-labelledby="popular-title"><div className="section-title"><div><span className="eyebrow">Les favoris</span><h2 id="popular-title">Populaire à Bely</h2></div><span className="section-count">{filteredDishes.length} résultats</span></div><div className="dish-grid">{filteredDishes.length ? filteredDishes.map((dish, index) => <DishCard key={`${activeDay}-${dish.name}`} dish={dish} onOpen={setSelectedDish} onToggleFavorite={toggleFavorite} isFavorite={favoriteNames.includes(dish.name)} compact={index > 0} />) : <p className="empty-state">Aucun plat ne correspond à cette recherche.</p>}</div></section>
+        <section className="popular-section" id="menu" aria-labelledby="popular-title"><div className="section-title"><div><span className="eyebrow">Les favoris</span><h2 id="popular-title">Populaire à Bely</h2></div><span className="section-count">{plural(filteredDishes.length, "résultat")}</span></div><div className="dish-grid">{filteredDishes.length ? filteredDishes.map((dish, index) => <DishCard key={`${activeDay}-${dish.name}`} dish={dish} onOpen={setSelectedDish} onToggleFavorite={toggleFavorite} isFavorite={favoriteNames.includes(dish.name)} compact={index > 0} />) : <p className="empty-state">Aucun plat ne correspond à cette recherche.</p>}</div></section>
 
         <section className="signature-card" aria-labelledby="signature-title"><div className="signature-card__image"><img src={featuredDish.image} alt="Spécialité de la maison : méchoui de mouton" /><span>Signature</span></div><div className="signature-card__body"><span className="eyebrow">La spécialité de la maison</span><h2 id="signature-title">Méchoui<br /><i>de mouton</i></h2><p>Rôti lentement, tendre à cœur, accompagné des garnitures du jour.</p><button className="text-button" onClick={() => setSelectedDish(featuredDish)}>Voir le plat <ChevronRight size={16} /></button></div></section>
 
-        <section className="team-story" aria-labelledby="team-title"><div className="team-story__copy"><span className="eyebrow">Chez Bely</span><h2 id="team-title">Une équipe,<br /><i>un même goût.</i></h2><p>Des mains passionnées, une attention à chaque détail et la fierté de vous servir chaque jour.</p><span className="team-story__promise"><Sparkles size={15} /> Chaque jour, fait maison</span></div><div className="team-story__gallery"><figure className="team-photo team-photo--duo"><img src="/bely-team-duo.jpg" alt="Deux membres de l'équipe Bely Mechoui" loading="lazy" /><figcaption>Le service avec le sourire</figcaption></figure><figure className="team-photo team-photo--collective"><img src="/bely-team-collective.jpg" alt="L'équipe Bely Mechoui" loading="lazy" /><figcaption>L'équipe Bely Mechoui</figcaption></figure><figure className="team-photo team-photo--service"><img src="/bely-team-service.jpg" alt="Les membres de l'équipe Bely Mechoui" loading="lazy" /></figure></div></section>
+        <section className="team-story" aria-labelledby="team-title"><div className="team-story__copy"><span className="eyebrow">Chez Bely</span><h2 id="team-title">Une équipe,<br /><i>un même goût.</i></h2><p>Des mains passionnées, une attention à chaque détail et la fierté de vous servir chaque jour.</p><span className="team-story__promise"><Sparkles size={15} /> Chaque jour, fait maison</span></div><div className="team-story__gallery"><figure className="team-photo team-photo--duo"><img src="/bely-team-duo.webp" alt="Deux membres de l'équipe Bely Mechoui" width={1200} height={1600} loading="lazy" decoding="async" /><figcaption>Le service avec le sourire</figcaption></figure><figure className="team-photo team-photo--collective"><img src="/bely-team-collective.webp" alt="L'équipe Bely Mechoui" width={1200} height={1600} loading="lazy" decoding="async" /><figcaption>L'équipe Bely Mechoui</figcaption></figure><figure className="team-photo team-photo--service"><img src="/bely-team-service.webp" alt="Les membres de l'équipe Bely Mechoui" width={1200} height={1600} loading="lazy" decoding="async" /></figure></div></section>
 
-        <section className="visit-card" id="infos"><div><span className="eyebrow">Nous trouver</span><h2>À bientôt<br /><i>à Sebenikoro.</i></h2></div><div className="visit-card__details"><span><MapPin size={17} /> Sebenikoro, Bamako, Mali</span><span><Clock3 size={17} /> {restaurantHours.days} · {restaurantHours.opening}</span><a href="https://www.facebook.com/salamata.soumare.3" target="_blank" rel="noreferrer">Suivez-nous sur Facebook <ChevronRight size={15} /></a></div></section>
+        <section className="visit-card" id="infos"><div><span className="eyebrow">Nous trouver</span><h2>À bientôt<br /><i>à Sebenikoro.</i></h2></div><div className="visit-card__details"><span><MapPin size={17} /> Sebenikoro, Bamako, Mali</span><span><Clock3 size={17} /> {restaurantHours.days} · {restaurantHours.opening}</span><div className="visit-card__actions">{CONTACT.whatsapp && <a className="visit-action visit-action--primary" href={whatsappLink()} target="_blank" rel="noreferrer"><Utensils size={15} /> Commander sur WhatsApp</a>}{CONTACT.phone && <a className="visit-action visit-action--primary" href={`tel:${CONTACT.phone.replace(/\s+/g, "")}`}><Phone size={15} /> Appeler le restaurant</a>}<a className="visit-action" href={CONTACT.maps} target="_blank" rel="noreferrer"><Navigation size={15} /> Itinéraire</a><a className="visit-action" href={CONTACT.facebook} target="_blank" rel="noreferrer">Facebook <ChevronRight size={15} /></a></div></div></section>
       </main>
 
       <footer className="app-footer"><div className="footer-motion" aria-hidden="true"><span className="footer-motion__orbit footer-motion__orbit--one" /><span className="footer-motion__orbit footer-motion__orbit--two" /><span className="footer-motion__spark footer-motion__spark--one"><Sparkles size={13} /></span><span className="footer-motion__spark footer-motion__spark--two"><UtensilsCrossed size={12} /></span></div><div className="footer-main"><Brand /><span>© 2026 Bely Mechoui</span></div><div className="footer-credits"><span>Réalisé par <strong>AMA-TECH</strong></span><span>Designé par <strong>ICHE</strong></span></div></footer>
