@@ -1,7 +1,7 @@
 ﻿import { useEffect, useRef, useState } from "react";
 import { Check, ChefHat, Mic, Send, Volume2, VolumeX, X } from "lucide-react";
 import type { Dish } from "../data/menu";
-import { answer, buildOrderMessage, type CartLine, type ChatAction, type ChatAnswer } from "./knowledge";
+import { answer, buildOrderMessage, buildShareMessage, type CartLine, type ChatAction, type ChatAnswer } from "./knowledge";
 import ShareRow from "../share/ShareRow";
 
 type Props = {
@@ -313,7 +313,7 @@ export default function ChatWidget({ dishes, allDishes, status, hours, formatPri
                     ))}
                     <li className="chat-recap__total"><span>Total</span><em>{formatPrice(message.recap.reduce((sum, line) => sum + line.price * line.qty, 0))}</em></li>
                   </ul>
-                  <ShareRow compact label="Partager ma commande" text={buildOrderMessage(message.recap, formatPrice)} />
+                  <ShareRow compact label="Partager ma commande" text={buildShareMessage(message.recap, formatPrice)} />
                 </>)}
                 {message.actions && (
                   <div className="chat-actions">

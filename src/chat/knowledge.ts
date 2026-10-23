@@ -65,16 +65,22 @@ function dishActions(dishes: Dish[], exclude?: string): ChatAction[] {
     .map((dish) => ({ label: dish.name, kind: "dish" as const, dish }));
 }
 
-export function buildOrderMessage(cart: CartLine[], formatPrice: (n: number) => string) {
-  const lines = cart.map((line) => `${line.qty} × ${line.name} (${formatPrice(line.price * line.qty)})`);
+function orderLines(cart: CartLine[], formatPrice: (n: number) => string) {
   return [
-    "Bonjour Bely Mechoui, je souhaite commander :",
-    ...lines,
+    ...cart.map((line) => `${line.qty} × ${line.name} (${formatPrice(line.price * line.qty)})`),
     "",
     `Total : ${formatPrice(total(cart))}`,
-    "",
-    "(Commande préparée depuis le site.)",
-  ].join("\n");
+  ];
+}
+
+/** Message envoyé au restaurant pour passer commande. */
+export function buildOrderMessage(cart: CartLine[], formatPrice: (n: number) => string) {
+  return ["Bely, voici ma commande :", "", ...orderLines(cart, formatPrice), "", "(Commande préparée depuis le site.)"].join("\n");
+}
+
+/** Message publié quand le client partage sa commande sur les réseaux. */
+export function buildShareMessage(cart: CartLine[], formatPrice: (n: number) => string) {
+  return ["Aujourd'hui, ma commande chez Bely Mechoui c'est :", "", ...orderLines(cart, formatPrice)].join("\n");
 }
 
 export function answer(input: string, context: ChatContext): ChatAnswer {
