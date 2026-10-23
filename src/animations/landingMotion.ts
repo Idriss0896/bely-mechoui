@@ -15,11 +15,11 @@ export function mountLandingMotion(root: HTMLElement) {
     intro
       .from(".header-brand-lockup", { autoAlpha: 0, y: -14, duration: 0.55 })
       .from(".app-header__top", { autoAlpha: 0, y: -12, duration: 0.5 }, "-=0.28")
-      .from(".header-opening", { autoAlpha: 0, y: 12, duration: 0.45 }, "-=0.18")
       .from(".app-header__copy .eyebrow", { autoAlpha: 0, y: 12, duration: 0.4 }, "-=0.12")
       .from(".app-header__copy h1", { autoAlpha: 0, y: 28, duration: 0.75 }, "-=0.16")
       .from(".app-header__copy p", { autoAlpha: 0, y: 14, duration: 0.45 }, "-=0.38")
       .from(".hero-cta", { autoAlpha: 0, y: 12, duration: 0.4 }, "-=0.2")
+      .from(".hero-hours", { autoAlpha: 0, y: 14, duration: 0.5 }, "-=0.22")
       .from(".hero-dish", { autoAlpha: 0, scale: 0.88, rotate: -15, duration: 1.05 }, "-=0.65")
       .from(".header-motion-note", { autoAlpha: 0, y: 12, duration: 0.45 }, "-=0.42");
 
@@ -44,6 +44,15 @@ export function mountLandingMotion(root: HTMLElement) {
         ease: "power2.out",
         scrollTrigger: { trigger: element, start: "top 88%", once: true },
       });
+    });
+
+    gsap.from(".hours-row", {
+      autoAlpha: 0,
+      x: compactMotion ? -8 : -14,
+      duration: 0.45,
+      stagger: 0.06,
+      ease: "power2.out",
+      scrollTrigger: { trigger: ".hours-list", start: "top 92%", once: true },
     });
 
     gsap.from(".signature-card", {

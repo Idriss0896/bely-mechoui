@@ -734,3 +734,32 @@ h2 { font-size: clamp(25px, 4vw, 33px); letter-spacing: -.035em; line-height: 1;
   .header-brand-lockup strong { font-size: 26px; }
   .header-opening { margin-top: 18px; }
 }
+
+/* Horaires : indicateur vivant dans le hero */
+.hero-hours { align-items: center; display: flex; gap: 13px; margin-top: 30px; }
+.hero-hours__dot { background: #8d857e; border-radius: 50%; flex: 0 0 auto; height: 9px; position: relative; width: 9px; }
+.hero-hours__dot::after { border: 1px solid rgba(255,255,255,.22); border-radius: 50%; content: ""; inset: -5px; position: absolute; }
+.hero-hours.is-open .hero-hours__dot { background: #a6d689; box-shadow: 0 0 16px rgba(166,214,137,.55); }
+.hero-hours.is-open .hero-hours__dot::after { animation: hours-ring 2.8s ease-out infinite; border-color: rgba(166,214,137,.55); }
+@keyframes hours-ring { 0% { opacity: .9; transform: scale(.7); } 70% { opacity: 0; transform: scale(1.9); } 100% { opacity: 0; transform: scale(1.9); } }
+.hero-hours__body { display: flex; flex-direction: column; gap: 3px; }
+.hero-hours__body strong { color: #fff4e7; font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+.hero-hours.is-open .hero-hours__body strong { color: #cfe8b8; }
+.hero-hours__detail { color: rgba(255,248,239,.72); font-family: 'Cormorant Garamond', serif; font-size: 19px; font-style: italic; line-height: 1; }
+
+/* Tableau des horaires */
+.hours-card { border-top: 1px solid var(--line); padding-top: 15px; width: 100%; }
+.hours-card__title { align-items: center; color: var(--coral-dark); display: flex; font-size: 10px; font-weight: 800; gap: 7px; letter-spacing: .16em; margin-bottom: 8px; text-transform: uppercase; }
+.hours-list { display: flex; flex-direction: column; list-style: none; margin: 0; padding: 0; }
+.hours-row { align-items: baseline; color: var(--muted); display: flex; font-size: 12px; gap: 8px; padding: 5px 0; transition: transform .25s ease, color .25s ease; }
+.hours-row:hover { color: var(--ink); transform: translateX(3px); }
+.hours-row i { border-bottom: 1px dotted rgba(33,27,24,.2); flex: 1 1 auto; transform: translateY(-3px); }
+.hours-row em { color: var(--ink); font-family: 'Cormorant Garamond', serif; font-size: 16px; font-style: normal; letter-spacing: .01em; }
+.hours-row.is-closed em { color: rgba(33,27,24,.38); }
+.hours-row.is-today { color: var(--ink); font-weight: 700; }
+.hours-row.is-today span::before { background: var(--coral); border-radius: 50%; content: ""; display: inline-block; height: 6px; margin-right: 7px; vertical-align: 1px; width: 6px; }
+
+@media (max-width: 720px) {
+  .hero-hours { backdrop-filter: blur(12px); background: rgba(33, 27, 24, .55); border: 1px solid rgba(255, 255, 255, .12); border-radius: 14px; margin-top: 22px; padding: 11px 14px; width: max-content; }
+  .hero-hours__detail { font-size: 17px; }
+}

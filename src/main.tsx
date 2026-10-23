@@ -26,6 +26,59 @@ const whatsappLink = (dishName?: string) =>
 
 const plural = (count: number, singular: string, pluriel = `${singular}s`) => `${count} ${count > 1 ? pluriel : singular}`;
 
+/** Horaires d'ouverture, exprimés à l'heure de Bamako (UTC+0). */
+type Opening = { open: number; close: number };
+type OpeningStatus = { open: boolean; label: string; detail: string };
+
+const CLOSED_DAYS = [1]; // lundi
+const WEEKDAY_NAMES = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+const WEEK_ROWS = [
+  { index: 1, label: "Lundi" },
+  { index: 2, label: "Mardi" },
+  { index: 3, label: "Mercredi" },
+  { index: 4, label: "Jeudi" },
+  { index: 5, label: "Vendredi" },
+  { index: 6, label: "Samedi" },
+  { index: 0, label: "Dimanche" },
+];
+
+function parseOpening(raw: string): Opening {
+  const match = raw.match(/(\d{1,2})\s*h.*?(\d{1,2})\s*h/i);
+  if (!match) return { open: 10, close: 20 };
+  return { open: Number(match[1]), close: Number(match[2]) };
+}
+
+function bamakoClock() {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Africa/Bamako",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  const read = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  const index = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(read("weekday"));
+  const hour = Number(read("hour"));
+  const minute = Number(read("minute"));
+  return { day: index < 0 ? 1 : index, hour, minutes: hour * 60 + minute };
+}
+
+function openStatus(opening: Opening): OpeningStatus {
+  const { day, minutes } = bamakoClock();
+  const isServiceDay = !CLOSED_DAYS.includes(day);
+
+  if (isServiceDay && minutes >= opening.open * 60 && minutes < opening.close * 60) {
+    return { open: true, label: "Ouvert maintenant", detail: `jusqu'à ${opening.close}h` };
+  }
+  if (isServiceDay && minutes < opening.open * 60) {
+    return { open: false, label: "Fermé", detail: `ouvre à ${opening.open}h` };
+  }
+
+  let ahead = 1;
+  while (CLOSED_DAYS.includes((day + ahead) % 7)) ahead += 1;
+  return { open: false, label: "Fermé", detail: `ouvre ${WEEKDAY_NAMES[(day + ahead) % 7]} à ${opening.open}h` };
+}
+
 type MenuState = Record<DayKey, Dish[]>;
 
 type Hours = { opening: string; days: string };
@@ -224,6 +277,15 @@ function App() {
   const menuState = payload.menu;
   const categories = payload.categories;
   const restaurantHours = payload.hours;
+  const opening = useMemo(() => parseOpening(restaurantHours.opening), [restaurantHours.opening]);
+  const today = bamakoClock().day;
+  const [status, setStatus] = useState<OpeningStatus>(() => openStatus(opening));
+
+  useEffect(() => {
+    const refresh = () => setStatus(openStatus(opening));
+    const timer = window.setInterval(refresh, 60_000);
+    return () => window.clearInterval(timer);
+  }, [opening]);
   const [activeDay, setActiveDay] = useState<DayKey>(getTodayMenuDay);
   const [activeCategory, setActiveCategory] = useState("Grillades");
   const [query, setQuery] = useState("");
@@ -311,14 +373,13 @@ function App() {
         </div>
         <div className="header-orbit header-orbit--one" /><div className="header-orbit header-orbit--two" /><span className="header-spark header-spark--one" /><span className="header-spark header-spark--two" /><span className="header-spark header-spark--three" />
         <div className="app-header__top"><Brand /><div className="header-actions"><div className="header-icon-group">{CONTACT.whatsapp && <a className="icon-button icon-button--header icon-button--wa" href={whatsappLink()} target="_blank" rel="noreferrer" aria-label="Commander sur WhatsApp"><MessageCircle size={18} /></a>}<div className="favorite-wrap"><button className={`icon-button icon-button--header ${favoritesOpen ? "is-open" : ""}`} aria-label="Mes plats favoris" aria-expanded={favoritesOpen} onClick={() => { setFavoritesOpen((open) => !open); setNotificationsOpen(false); }}><Heart size={18} fill={favoriteDishes.length ? "currentColor" : "none"} />{favoriteDishes.length > 0 && <span className="notification-badge favorite-badge">{favoriteDishes.length}</span>}</button>{favoritesOpen && <div className="favorites-panel" role="dialog" aria-label="Mes plats favoris"><div className="notification-panel__head"><div><span className="eyebrow eyebrow--light">Mes envies</span><strong>Plats favoris</strong></div><Heart size={18} /></div>{favoriteDishes.length ? favoriteDishes.map((dish) => <button className="favorite-item" key={dish.name} onClick={() => { setSelectedDish(dish); setFavoritesOpen(false); }}><img src={dish.image} alt="" /><span><strong>{dish.name}</strong><small>{formatPrice(dish.price)}</small></span><Heart size={15} fill="currentColor" /></button>) : <p className="panel-empty">Appuie sur le cœur d’un plat pour le retrouver ici.</p>}</div>}</div></div><div className="notification-wrap"><button className={`icon-button icon-button--header ${notificationsOpen ? "is-open" : ""}`} aria-label="Notifications" aria-expanded={notificationsOpen} onClick={() => { const willOpen = !notificationsOpen; setNotificationsOpen(willOpen); setUnreadNotifications(willOpen ? 0 : unreadNotifications); setFavoritesOpen(false); }}><Bell size={18} />{unreadNotifications > 0 && <span className="notification-badge">{unreadNotifications}</span>}</button>{notificationsOpen && <div className="notification-panel" role="dialog" aria-label="Notifications"><div className="notification-panel__head"><div><span className="eyebrow eyebrow--light">À la maison</span><strong>Les nouvelles de Bely</strong></div><BellRing size={18} /></div>{initialNotifications.map((notification) => <div className="notification-item" key={notification.title}><span className="notification-item__icon"><Check size={14} /></span><span><strong>{notification.title}</strong><small>{notification.text}</small><em>{notification.time}</em></span></div>)}{initialNotifications.length === 0 && <p className="panel-empty">Aucune nouvelle pour le moment.</p>}<button className="notification-panel__close" onClick={() => setNotificationsOpen(false)}>Tout est lu</button></div>}</div></div></div>
-        <div className="header-opening"><span className="header-opening__icon"><Clock3 size={15} /></span><span><strong>Ouvert de {restaurantHours.opening}</strong><small>{restaurantHours.days}</small></span></div>
-        <div className="app-header__copy"><span className="eyebrow eyebrow--light"><ChefHat size={13} /> LE GOÛT DU FAIT MAISON</span><h1>La cuisine<br /><i>qui rassemble.</i></h1><p>Des plats généreux, préparés avec le feu et le cœur.</p><a className="hero-cta" href="#menu"><span>Découvrir la carte</span><ChevronRight size={16} /></a></div>
+        <div className="app-header__copy"><span className="eyebrow eyebrow--light"><ChefHat size={13} /> LE GOÛT DU FAIT MAISON</span><h1>La cuisine<br /><i>qui rassemble.</i></h1><p>Des plats généreux, préparés avec le feu et le cœur.</p><a className="hero-cta" href="#menu"><span>Découvrir la carte</span><ChevronRight size={16} /></a><div className={`hero-hours ${status.open ? "is-open" : ""}`}><span className="hero-hours__dot" aria-hidden="true" /><span className="hero-hours__body"><strong>{status.label}</strong><span className="hero-hours__detail">{status.detail}</span></span></div></div>
         <div className="hero-dish"><img src={featuredDish.image} alt="Méchoui de mouton" /><span className="hero-dish__glow" /></div>
         <div className="header-motion-note" aria-hidden="true"><span className="header-motion-note__icon"><Flame size={14} /></span><span><strong>Chaque jour</strong><small>fait maison</small></span><i /><i /><i /></div>
       </header>
 
       <main className="app-content">
-        <div className="content-topline"><span>Menu digital</span><span>{restaurantHours.days} · {restaurantHours.opening.replace("h à ", ":00 — ").replace("h", ":00")}</span></div>
+        <div className="content-topline"><span>Menu digital</span><span>Sebenikoro, Bamako</span></div>
         <div className="search-row"><label className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Rechercher un plat" aria-label="Rechercher un plat" /></label><button className={`icon-button filter-button ${sortMode !== "default" ? "is-active" : ""}`} aria-label={sortMode === "default" ? "Trier par prix croissant" : sortMode === "price-asc" ? "Trier par prix décroissant" : "Revenir à l'ordre du menu"} title={sortMode === "price-asc" ? "Prix croissant" : sortMode === "price-desc" ? "Prix décroissant" : "Trier par prix"} onClick={() => setSortMode(sortMode === "default" ? "price-asc" : sortMode === "price-asc" ? "price-desc" : "default")}><SlidersHorizontal size={18} />{sortMode !== "default" && <span className="filter-button__state">{sortMode === "price-asc" ? "↑" : "↓"}</span>}</button></div>
 
         <section className="categories-section" aria-labelledby="categories-title"><div className="section-title"><div><span className="eyebrow">Découvrir</span><h2 id="categories-title">Nos catégories</h2></div><span className="section-count">{plural(filteredDishes.length, "plat")}</span></div><div className="category-list" role="tablist" aria-label="Catégories de plats">{categories.map((category) => { const Icon = categoryIcons[category as keyof typeof categoryIcons] ?? ChefHat; const count = dayDishes.filter((dish) => dish.category === category).length; return <button key={category} className={activeCategory === category ? "is-active" : ""} role="tab" aria-selected={activeCategory === category} onClick={() => setActiveCategory(category)}><span className="category-icon"><Icon size={17} /></span><span className="category-label">{category}</span><small>{count}</small></button>; })}</div></section>
@@ -331,7 +392,7 @@ function App() {
 
         <section className="team-story" aria-labelledby="team-title"><div className="team-story__copy"><span className="eyebrow">Chez Bely</span><h2 id="team-title">Une équipe,<br /><i>un même goût.</i></h2><p>Des mains passionnées, une attention à chaque détail et la fierté de vous servir chaque jour.</p><span className="team-story__promise"><Sparkles size={15} /> Chaque jour, fait maison</span></div><div className="team-story__gallery"><figure className="team-photo team-photo--duo"><img src="/bely-team-duo.webp" alt="Deux membres de l'équipe Bely Mechoui" width={1200} height={1600} loading="lazy" decoding="async" /><figcaption>Le service avec le sourire</figcaption></figure><figure className="team-photo team-photo--collective"><img src="/bely-team-collective.webp" alt="L'équipe Bely Mechoui" width={1200} height={1600} loading="lazy" decoding="async" /><figcaption>L'équipe Bely Mechoui</figcaption></figure><figure className="team-photo team-photo--service"><img src="/bely-team-service.webp" alt="Les membres de l'équipe Bely Mechoui" width={1200} height={1600} loading="lazy" decoding="async" /></figure></div></section>
 
-        <section className="visit-card" id="infos"><div><span className="eyebrow">Nous trouver</span><h2>À bientôt<br /><i>à Sebenikoro.</i></h2></div><div className="visit-card__details"><span><MapPin size={17} /> Sebenikoro, Bamako, Mali</span><span><Clock3 size={17} /> {restaurantHours.days} · {restaurantHours.opening}</span><div className="visit-card__actions">{CONTACT.whatsapp && <a className="visit-action visit-action--primary" href={whatsappLink()} target="_blank" rel="noreferrer"><Utensils size={15} /> Commander sur WhatsApp</a>}{CONTACT.phone && <a className="visit-action visit-action--primary" href={`tel:${CONTACT.phone.replace(/\s+/g, "")}`}><Phone size={15} /> Appeler le restaurant</a>}<a className="visit-action" href={CONTACT.maps} target="_blank" rel="noreferrer"><Navigation size={15} /> Itinéraire</a><a className="visit-action" href={CONTACT.facebook} target="_blank" rel="noreferrer">Facebook <ChevronRight size={15} /></a></div></div></section>
+        <section className="visit-card" id="infos"><div><span className="eyebrow">Nous trouver</span><h2>À bientôt<br /><i>à Sebenikoro.</i></h2></div><div className="visit-card__details"><span><MapPin size={17} /> Sebenikoro, Bamako, Mali</span><div className="hours-card"><span className="hours-card__title"><Clock3 size={14} /> Horaires</span><ul className="hours-list">{WEEK_ROWS.map((row) => <li key={row.label} className={`hours-row${row.index === today ? " is-today" : ""}${CLOSED_DAYS.includes(row.index) ? " is-closed" : ""}`}><span>{row.label}</span><i aria-hidden="true" /><em>{CLOSED_DAYS.includes(row.index) ? "Fermé" : `${opening.open}h – ${opening.close}h`}</em></li>)}</ul></div><div className="visit-card__actions">{CONTACT.whatsapp && <a className="visit-action visit-action--primary" href={whatsappLink()} target="_blank" rel="noreferrer"><Utensils size={15} /> Commander sur WhatsApp</a>}{CONTACT.phone && <a className="visit-action visit-action--primary" href={`tel:${CONTACT.phone.replace(/\s+/g, "")}`}><Phone size={15} /> Appeler le restaurant</a>}<a className="visit-action" href={CONTACT.maps} target="_blank" rel="noreferrer"><Navigation size={15} /> Itinéraire</a><a className="visit-action" href={CONTACT.facebook} target="_blank" rel="noreferrer">Facebook <ChevronRight size={15} /></a></div></div></section>
       </main>
 
       <footer className="app-footer"><div className="footer-motion" aria-hidden="true"><span className="footer-motion__orbit footer-motion__orbit--one" /><span className="footer-motion__orbit footer-motion__orbit--two" /><span className="footer-motion__spark footer-motion__spark--one"><Sparkles size={13} /></span><span className="footer-motion__spark footer-motion__spark--two"><UtensilsCrossed size={12} /></span></div><div className="footer-main"><Brand /><span>© 2026 Bely Mechoui</span></div><div className="footer-credits"><span>Réalisé par <strong>AMA-TECH</strong></span><span>Designé par <strong>ICHE</strong></span></div></footer>
