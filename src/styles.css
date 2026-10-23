@@ -989,3 +989,32 @@ h2 { font-size: clamp(25px, 4vw, 33px); letter-spacing: -.035em; line-height: 1;
   .header-brand-lockup small { font-size: 9px; letter-spacing: .24em; }
   .site-footer__brand { font-size: 21px; }
 }
+
+/* Barre supérieure fixe : marque + actions, visible au défilement */
+.topbar { align-items: center; background: rgba(33, 27, 24, .88); -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%); border-bottom: 1px solid rgba(255, 255, 255, .08); display: flex; height: 64px; justify-content: space-between; left: 0; opacity: 0; padding: 0 max(16px, calc((100vw - 1190px) / 2)); position: fixed; right: 0; top: 0; transform: translateY(-100%); transition: transform .3s ease, opacity .3s ease; visibility: hidden; z-index: 40; }
+.topbar.is-visible { opacity: 1; transform: none; visibility: visible; }
+.topbar__brand { align-items: center; color: var(--gold); display: inline-flex; gap: 9px; text-decoration: none; }
+.topbar__mark { align-items: center; background: rgba(233, 182, 111, .14); border: 1px solid rgba(233, 182, 111, .4); border-radius: 50%; display: grid; height: 30px; place-items: center; width: 30px; }
+.topbar__brand strong { font-family: 'Cinzel', 'Playfair Display', serif; font-size: 15px; font-weight: 600; letter-spacing: .06em; }
+.topbar__brand i { font-style: normal; }
+.topbar .header-actions, .topbar .header-icon-group { gap: 6px; }
+.topbar .icon-button { height: 36px; width: 36px; }
+.topbar .notification-panel, .topbar .favorites-panel { top: 48px; }
+
+/* Recherche : champ + suggestions sous le champ */
+.search-field { flex: 1; min-width: 0; position: relative; }
+.search-results { animation: panel-in .18s ease-out both; background: #fffdfa; border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 22px 44px rgba(33, 27, 24, .14); left: 0; margin-top: 8px; max-height: 300px; overflow: auto; padding: 6px; position: absolute; right: 0; top: 100%; z-index: 26; }
+.search-result { align-items: center; background: none; border: 0; border-radius: 12px; color: var(--ink); display: flex; font-size: 13px; font-weight: 600; gap: 10px; justify-content: space-between; padding: 11px 12px; text-align: left; width: 100%; }
+.search-result:hover, .search-result:focus-visible { background: rgba(33, 27, 24, .05); }
+.search-result em { color: var(--coral-dark); font-family: 'Playfair Display', serif; font-size: 14px; font-style: normal; }
+.search-result__empty { color: var(--muted); font-size: 12px; margin: 0; padding: 12px; }
+
+/* Défilement : évite les sauts et le rebond sur iOS */
+html { overscroll-behavior-y: none; scroll-behavior: auto; scroll-padding-top: 76px; }
+html, body { overflow-x: clip; }
+
+@media (max-width: 720px) {
+  .topbar__brand strong { font-size: 13px; }
+  .topbar .icon-button { height: 34px; width: 34px; }
+  .search-results { max-height: 260px; }
+}
