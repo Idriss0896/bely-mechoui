@@ -7,9 +7,10 @@ export type ChatAction =
   | { label: string; kind: "recap" }
   | { label: string; kind: "confirm" }
   | { label: string; kind: "reset" }
-  | { label: string; kind: "menu" };
+  | { label: string; kind: "menu" }
+  | { label: string; kind: "send" };
 
-export type ChatAnswer = { text: string; actions?: ChatAction[]; recap?: CartLine[] };
+export type ChatAnswer = { text: string; actions?: ChatAction[]; recap?: CartLine[]; cart?: CartLine[] };
 
 export type ChatContext = {
   dishes: Dish[];
@@ -31,12 +32,37 @@ const normalize = (value: string) =>
 
 const has = (text: string, words: RegExp) => words.test(text);
 
-function dishActions(dishes: Dish[]): ChatAction[] {
-  return dishes.slice(0, 4).map((dish) => ({ label: dish.name, kind: "dish" as const, dish }));
+const QUANTITY_WORDS: Record<string, number> = { un: 1, une: 1, deux: 2, trois: 3, quatre: 4, cinq: 5, six: 6, sept: 7, huit: 8 };
+
+function parseQuantity(text: string): number {
+  const digits = text.match(/\b(\d{1,2})\b/);
+  if (digits) return Math.min(Math.max(Number(digits[1]), 1), 20);
+  const padded = ` ${text} `;
+  for (const [word, value] of Object.entries(QUANTITY_WORDS)) {
+    if (padded.includes(` ${word} `)) return value;
+  }
+  return 1;
 }
 
-function total(cart: CartLine[]) {
-  return cart.reduce((sum, line) => sum + line.price * line.qty, 0);
+function findDish(text: string, dishes: Dish[]): Dish | undefined {
+  return dishes.find((dish) => {
+    const name = normalize(dish.name);
+    if (!name) return false;
+    if (text.includes(name)) return true;
+    return name
+      .split(" ")
+      .filter((token) => token.length > 4)
+      .some((token) => text.includes(token));
+  });
+}
+
+const total = (cart: CartLine[]) => cart.reduce((sum, line) => sum + line.price * line.qty, 0);
+
+function dishActions(dishes: Dish[], exclude?: string): ChatAction[] {
+  return dishes
+    .filter((dish) => dish.name !== exclude)
+    .slice(0, 3)
+    .map((dish) => ({ label: dish.name, kind: "dish" as const, dish }));
 }
 
 export function buildOrderMessage(cart: CartLine[], formatPrice: (n: number) => string) {
@@ -56,69 +82,97 @@ export function answer(input: string, context: ChatContext): ChatAnswer {
   const { dishes, allDishes, status, hours, cart, formatPrice } = context;
   const available = dishes.filter((dish) => !dish.unavailable);
   const servable = available.length ? available : dishes;
+  const catalog = allDishes.filter((dish) => !dish.unavailable);
 
   if (!text) {
     return { text: "Je t'écoute : horaires, carte, adresse ou commande." };
   }
 
-  // 1. Un plat précis est cité -> on l'ajoute à la commande.
-  const matchedDish = allDishes.find((dish) => {
-    const name = normalize(dish.name);
-    return name.length > 3 && text.includes(name);
-  });
-  if (matchedDish) {
+  // Abandon de la commande.
+  if (has(text, /laisse tomber|annule|annuler|oublie|finalement|plus rien|recommence|recommencer|efface|vide/)) {
+    if (!cart.length) return { text: "Il n'y a rien à annuler, ta commande est déjà vide. Je te montre la carte ?", actions: [{ label: "Voir la carte", kind: "menu" }] };
     return {
-      text: `J'ai ajouté ${matchedDish.name} (${formatPrice(matchedDish.price)}) à ta commande. autre chose, ou je te montre le récapitulatif ?`,
-      actions: [{ label: "Voir ma commande", kind: "recap" }, ...dishActions(servable.filter((dish) => dish.name !== matchedDish.name).slice(0, 2))],
-    };
-  }
-
-  // 2. Horaires.
-  if (has(text, /horaire|ouvert|ferme|heure|ouverture|fermeture|midi|soir|quand/)) {
-    const state = status.open ? `C'est ouvert en ce moment, ${status.detail}.` : `C'est fermé en ce moment : ${status.detail}.`;
-    return {
-      text: `${state} Nous servons ${hours.days.toLowerCase()}, de ${hours.opening}.`,
+      text: `C'est annulé, j'ai vidé la commande (${formatPrice(total(cart))}). On repart de zéro quand tu veux.`,
+      cart: [],
       actions: [{ label: "Voir la carte", kind: "menu" }],
     };
   }
 
-  // 3. Adresse et accès.
-  if (has(text, /adresse|ou etes|ou est|situe|localis|trouver|itineraire|chemin|map|bamako|sebenikoro/)) {
-    return {
-      text: "Nous sommes à Sebenikoro, Bamako (Mali), juste à côté de la voie principale. Le bouton Itinéraire du site ouvre Google Maps.",
-      actions: [{ label: "Voir la carte", kind: "menu" }],
-    };
-  }
-
-  // 4. Contact.
-  if (has(text, /telephone|numero|whatsapp|appeler|contact|joindre/)) {
-    return {
-      text: "Tu peux nous joindre au +223 72 84 16 16, ou passer par WhatsApp depuis le bouton Commander.",
-      actions: [{ label: "Voir ma commande", kind: "recap" }],
-    };
-  }
-
-  // 5. Commande / récapitulatif.
-  if (has(text, /commande|commander|recap|recapitulatif|total|valider|termine|fini|c est tout|combien/)) {
-    if (!cart.length) {
+  // Retirer un plat précis.
+  if (has(text, /enleve|enlever|retire|retirer|supprime|supprimer/)) {
+    const dish = findDish(text, catalog);
+    if (dish) {
+      const line = cart.find((item) => item.name === dish.name);
+      if (!line) return { text: `Je ne trouve pas ${dish.name} dans ta commande.`, actions: [{ label: "Voir ma commande", kind: "recap" }] };
+      const next = line.qty > 1
+        ? cart.map((item) => (item.name === dish.name ? { ...item, qty: item.qty - 1 } : item))
+        : cart.filter((item) => item.name !== dish.name);
       return {
-        text: "Avec plaisir. Voici ce que nous servons aujourd'hui : dis-moi ce qui te fait envie.",
-        actions: dishActions(servable),
+        text: `J'ai retiré ${dish.name}. Il reste ${formatPrice(total(next))}.`,
+        cart: next,
+        actions: next.length ? [{ label: "Voir ma commande", kind: "recap" }] : [{ label: "Voir la carte", kind: "menu" }],
       };
     }
+    return { text: "Quel plat veux-tu retirer ?", actions: [{ label: "Voir ma commande", kind: "recap" }] };
+  }
+
+  // Ajout d'un plat (éventuellement avec une quantité).
+  const matched = findDish(text, catalog);
+  if (matched) {
+    const quantity = parseQuantity(text);
+    const existing = cart.find((line) => line.name === matched.name);
+    const next = existing
+      ? cart.map((line) => (line.name === matched.name ? { ...line, qty: line.qty + quantity } : line))
+      : [...cart, { name: matched.name, price: matched.price, qty: quantity }];
     return {
-      text: `Voilà ta commande. Vérifie, puis valide pour continuer sur WhatsApp.`,
+      text: `J'ai ajouté ${quantity > 1 ? `${quantity} × ` : ""}${matched.name} (${formatPrice(matched.price * quantity)}). Total : ${formatPrice(total(next))}. Autre chose ?`,
+      cart: next,
+      actions: [{ label: "Voir ma commande", kind: "recap" }, ...dishActions(servable, matched.name).slice(0, 2)],
+    };
+  }
+
+  // Horaires.
+  if (has(text, /horaire|ouvert|ferme|heure|ouverture|fermeture|midi|soir|quand|open/)) {
+    const state = status.open ? `C'est ouvert en ce moment, ${status.detail}.` : `C'est fermé en ce moment : ${status.detail}.`;
+    return { text: `${state} Nous servons ${hours.days.toLowerCase()}, de ${hours.opening}.`, actions: [{ label: "Voir la carte", kind: "menu" }] };
+  }
+
+  // Adresse.
+  if (has(text, /adresse|ou etes|ou est|situe|localis|trouver|itineraire|chemin|map|bamako|sebenikoro/)) {
+    return {
+      text: "Nous sommes à Sebenikoro, Bamako (Mali). Le bouton Itinéraire du site ouvre Google Maps, et je peux te donner le numéro si tu préfères appeler.",
+      actions: [{ label: "Voir la carte", kind: "menu" }],
+    };
+  }
+
+  // Contact.
+  if (has(text, /telephone|numero|whatsapp|appeler|contact|joindre/)) {
+    return { text: "Tu peux nous joindre au +223 72 84 16 16. Sur WhatsApp, réponds depuis le bouton Commander : ta commande part déjà rédigée.", actions: [{ label: "Voir ma commande", kind: "recap" }] };
+  }
+
+  // Récapitulatif, total, validation.
+  if (has(text, /commande|commander|recap|recapitulatif|total|valider|valide|termine|fini|c est tout|combien|prix/)) {
+    if (!cart.length) {
+      return { text: "Ta commande est vide pour l'instant. Voici ce que nous servons aujourd'hui :", actions: dishActions(servable) };
+    }
+    return {
+      text: `Voilà ta commande : ${formatPrice(total(cart))}. Vérifie, puis valide pour continuer sur WhatsApp.`,
       recap: cart,
       actions: [{ label: "Valider sur WhatsApp", kind: "confirm" }, { label: "Ajouter un plat", kind: "menu" }],
     };
   }
 
-  if (has(text, /annuler|effacer|recommencer|vider/)) {
-    return { text: "J'ai vidé ta commande. On repart de zéro.", actions: [{ label: "Voir la carte", kind: "menu" }] };
+  // Réponses courtes.
+  if (has(text, /^(oui|ok|d accord|parfait|vas y|go)$/)) {
+    if (cart.length) return { text: `Parfait. Total : ${formatPrice(total(cart))}. Je te prépare le message WhatsApp ?`, recap: cart, actions: [{ label: "Valider sur WhatsApp", kind: "confirm" }, { label: "Modifier", kind: "menu" }] };
+    return { text: "Dis-moi ce qui te ferait plaisir, je l'ajoute à ta commande.", actions: dishActions(servable) };
+  }
+  if (has(text, /^(non|pas maintenant|plus tard)$/)) {
+    return { text: "Pas de souci. Je reste là si tu as besoin des horaires, de la carte ou de l'adresse." };
   }
 
-  // 6. Carte et prix.
-  if (has(text, /menu|carte|plat|manger|specialite|prix|combien|boisson|grillade|accompagnement/)) {
+  // Carte et prix.
+  if (has(text, /menu|carte|plat|manger|specialite|boisson|grillade|accompagnement|boeuf|poulet|riz|salade|burger|bissap/)) {
     const list = servable.slice(0, 5).map((dish) => `${dish.name} — ${formatPrice(dish.price)}`).join("\n");
     return {
       text: servable.length
@@ -128,18 +182,15 @@ export function answer(input: string, context: ChatContext): ChatAnswer {
     };
   }
 
-  // 7. Salutations / remerciements.
+  // Salutations.
   if (has(text, /bonjour|salut|bonsoir|hello|coucou/)) {
-    return {
-      text: "Bonjour et bienvenue chez Bely Mechoui ! Je peux te donner les horaires, la carte, l'adresse, ou prendre ta commande.",
-      actions: [{ label: "La carte", kind: "menu" }, { label: "Horaires", kind: "menu" }],
-    };
+    return { text: "Bonjour et bienvenue chez Bely Mechoui ! Je peux te donner les horaires, la carte, l'adresse, ou prendre ta commande.", actions: [{ label: "La carte", kind: "menu" }, { label: "Voir ma commande", kind: "recap" }] };
   }
-  if (has(text, /merci|super|parfait|nickel/)) {
+  if (has(text, /merci|super|nickel|top/)) {
     return { text: "Avec plaisir ! À très vite chez Bely.", actions: [{ label: "Voir la carte", kind: "menu" }] };
   }
 
-  // 8. Repli.
+  // Repli.
   return {
     text: "Je peux t'aider sur les horaires, la carte du jour, l'adresse ou ta commande. Dis-moi ce qu'il te faut.",
     actions: [{ label: "La carte", kind: "menu" }, { label: "Voir ma commande", kind: "recap" }],

@@ -860,3 +860,32 @@ h2 { font-size: clamp(25px, 4vw, 33px); letter-spacing: -.035em; line-height: 1;
   .hero-hours { backdrop-filter: none; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.14); border-radius: 14px; margin-top: 20px; padding: 12px 14px; width: 100%; }
   .header-motion-note { display: none; }
 }
+
+/* Boutons du bloc « Nous trouver » : grille lisible, couleurs par action */
+.visit-card__actions { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 18px; }
+.visit-action { align-items: center; border: 1px solid transparent; border-radius: 16px; display: inline-flex; font-size: 13px; font-weight: 700; gap: 8px; justify-content: center; min-height: 50px; padding: 12px 14px; transition: box-shadow .2s, transform .2s, background .2s; }
+.visit-action:hover { box-shadow: 0 12px 24px rgba(33,27,24,.14); transform: translateY(-2px); }
+.visit-action svg { flex: 0 0 auto; }
+.visit-action--wa { background: #25d366; box-shadow: 0 10px 22px rgba(37,211,102,.28); color: #06240f; grid-column: 1 / -1; }
+.visit-action--wa:hover { background: #2ee070; }
+.visit-action--call { background: var(--ink); color: #fff8ef; }
+.visit-action--map { background: #fff; border-color: var(--line); color: var(--ink); }
+.visit-action--fb { background: #eef2f8; border-color: #dbe3ef; color: #17427a; grid-column: 1 / -1; }
+@media (max-width: 380px) {
+  .visit-card__actions { grid-template-columns: 1fr; }
+  .visit-action--wa, .visit-action--fb { grid-column: auto; }
+}
+
+/* Bouton assistant : visible, sobre, avec une pulsation discrète */
+.chat-fab { box-shadow: 0 14px 32px rgba(33,27,24,.34); }
+.chat-fab::after { animation: fab-ring 3.8s ease-out infinite; border: 2px solid rgba(196,74,50,.5); border-radius: inherit; content: ""; inset: -3px; opacity: 0; pointer-events: none; position: absolute; }
+@keyframes fab-ring { 0% { opacity: .55; transform: scale(.92); } 40% { opacity: 0; transform: scale(1.18); } 100% { opacity: 0; transform: scale(1.18); } }
+.chat-fab__dot { background: var(--coral); border: 2px solid #fff; border-radius: 50%; height: 11px; position: absolute; right: -2px; top: -2px; width: 11px; }
+
+/* Priorité de couleur pour les boutons du bloc « Nous trouver » */
+.visit-card__details a.visit-action { color: var(--ink); }
+.visit-card__details a.visit-action svg { color: inherit; }
+.visit-card__details a.visit-action--wa { color: #06240f; }
+.visit-card__details a.visit-action--call { color: #fff8ef; }
+.visit-card__details a.visit-action--map { color: var(--ink); }
+.visit-card__details a.visit-action--fb { color: #17427a; }

@@ -20,6 +20,8 @@ type Message = {
   actions?: ChatAction[];
 };
 
+const PENDING_KEY = "bely-commande-en-attente";
+
 const WELCOME: Message = {
   id: 1,
   role: "bot",
@@ -39,6 +41,7 @@ export default function ChatWidget({ dishes, allDishes, status, hours, formatPri
   const [listening, setListening] = useState(false);
   const [voice, setVoice] = useState(false);
   const [online, setOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine));
+  const [pending, setPending] = useState(false);
 
   const cartRef = useRef<CartLine[]>([]);
   const listRef = useRef<HTMLDivElement>(null);
@@ -48,7 +51,30 @@ export default function ChatWidget({ dishes, allDishes, status, hours, formatPri
   cartRef.current = cart;
 
   useEffect(() => {
-    const up = () => setOnline(true);
+    try {
+      const stored = window.localStorage.getItem(PENDING_KEY);
+      if (stored) {
+        setPending(true);
+        push({ role: "bot", text: "Tu as une commande enregistrée hors ligne. Veux-tu l'envoyer sur WhatsApp maintenant ?", actions: [{ label: "Envoyer ma commande", kind: "send" }] });
+      }
+    } catch {
+      /* stockage indisponible */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const up = () => {
+      setOnline(true);
+      try {
+        if (window.localStorage.getItem(PENDING_KEY)) {
+          setPending(true);
+          push({ role: "bot", text: "Le réseau est revenu. Ta commande t'attend : je l'envoie sur WhatsApp ?", actions: [{ label: "Envoyer ma commande", kind: "send" }] });
+        }
+      } catch {
+        /* stockage indisponible */
+      }
+    };
     const down = () => setOnline(false);
     window.addEventListener("online", up);
     window.addEventListener("offline", down);
@@ -56,6 +82,7 @@ export default function ChatWidget({ dishes, allDishes, status, hours, formatPri
       window.removeEventListener("online", up);
       window.removeEventListener("offline", down);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -89,54 +116,38 @@ export default function ChatWidget({ dishes, allDishes, status, hours, formatPri
 
   useEffect(() => () => window.speechSynthesis?.cancel(), []);
 
-  const push = (message: Omit<Message, "id">) => {
+  function push(message: Omit<Message, "id">) {
     setMessages((current) => [...current, { ...message, id: current.length + 1 }]);
-  };
+  }
 
-  const reply = (result: ChatAnswer) => {
+  function reply(result: ChatAnswer) {
     setTyping(true);
     window.setTimeout(() => {
       setTyping(false);
       push({ role: "bot", text: result.text, actions: result.actions, recap: result.recap });
     }, 420);
-  };
+  }
 
-  const context = () => ({
-    dishes,
-    allDishes,
-    status,
-    hours,
-    cart: cartRef.current,
-    formatPrice,
-  });
+  function applyCart(next: CartLine[]) {
+    setCart(next);
+    cartRef.current = next;
+  }
 
-  const send = (raw: string) => {
+  function context() {
+    return { dishes, allDishes, status, hours, cart: cartRef.current, formatPrice };
+  }
+
+  function send(raw: string) {
     const text = raw.trim();
     if (!text) return;
     push({ role: "user", text });
     setInput("");
-    reply(answer(text, context()));
-  };
+    const result = answer(text, context());
+    if (result.cart) applyCart(result.cart);
+    reply(result);
+  }
 
-  const addDish = (dish: Dish) => {
-    const current = cartRef.current;
-    const existing = current.find((line) => line.name === dish.name);
-    const next = existing
-      ? current.map((line) => (line.name === dish.name ? { ...line, qty: line.qty + 1 } : line))
-      : [...current, { name: dish.name, price: dish.price, qty: 1 }];
-    setCart(next);
-    cartRef.current = next;
-    push({ role: "user", text: dish.name });
-    reply({
-      text: `C'est noté : ${dish.name} (${formatPrice(dish.price)}). Tu veux autre chose ?`,
-      actions: [
-        { label: "Voir ma commande", kind: "recap" },
-        ...dishes.filter((item) => item.name !== dish.name).slice(0, 2).map((item) => ({ label: item.name, kind: "dish" as const, dish: item })),
-      ],
-    });
-  };
-
-  const showRecap = () => {
+  function showRecap() {
     const current = cartRef.current;
     if (!current.length) {
       reply({ text: "Ta commande est vide pour l'instant. Choisis un plat, je m'occupe du reste.", actions: dishes.slice(0, 3).map((dish) => ({ label: dish.name, kind: "dish" as const, dish })) });
@@ -147,28 +158,76 @@ export default function ChatWidget({ dishes, allDishes, status, hours, formatPri
       recap: current,
       actions: [{ label: "Valider sur WhatsApp", kind: "confirm" }, { label: "Ajouter un plat", kind: "menu" }],
     });
-  };
+  }
 
-  const confirmOrder = () => {
+  function confirmOrder() {
     const current = cartRef.current;
     if (!current.length) return;
+    if (!navigator.onLine) {
+      try {
+        window.localStorage.setItem(PENDING_KEY, JSON.stringify(current));
+      } catch {
+        /* stockage indisponible */
+      }
+      setPending(true);
+      reply({
+        text: "Tu es hors ligne : ta commande est enregistrée sur cet appareil. Dès que le réseau revient, je te propose de l'envoyer — rien n'est perdu.",
+        actions: [{ label: "Réessayer maintenant", kind: "send" }],
+      });
+      return;
+    }
     window.open(whatsappHref(buildOrderMessage(current, formatPrice)), "_blank", "noopener");
-    reply({ text: "Je t'ouvre WhatsApp avec le récapitulatif : il ne reste qu'à envoyer le message pour finaliser.", actions: [{ label: "Modifier la commande", kind: "recap" }] });
-  };
+    try {
+      window.localStorage.removeItem(PENDING_KEY);
+    } catch {
+      /* stockage indisponible */
+    }
+    setPending(false);
+    reply({ text: "Je t'ouvre WhatsApp avec le récapitulatif : il ne reste qu'à envoyer le message.", actions: [{ label: "Modifier la commande", kind: "recap" }] });
+  }
 
-  const handleAction = (action: ChatAction) => {
-    if (action.kind === "dish") return addDish(action.dish);
+  function sendPending() {
+    let lines: CartLine[] = cartRef.current;
+    try {
+      const stored = window.localStorage.getItem(PENDING_KEY);
+      if (stored) lines = JSON.parse(stored) as CartLine[];
+    } catch {
+      /* stockage indisponible */
+    }
+    if (!lines.length) {
+      reply({ text: "Je ne retrouve plus la commande enregistrée. Dis-moi ce que tu veux, je la refais.", actions: [{ label: "Voir la carte", kind: "menu" }] });
+      return;
+    }
+    window.open(whatsappHref(buildOrderMessage(lines, formatPrice)), "_blank", "noopener");
+    try {
+      window.localStorage.removeItem(PENDING_KEY);
+    } catch {
+      /* stockage indisponible */
+    }
+    setPending(false);
+    reply({ text: "C'est parti : WhatsApp est ouvert avec ta commande. Il ne reste qu'à envoyer le message." });
+  }
+
+  function handleAction(action: ChatAction) {
+    if (action.kind === "dish") {
+      const text = action.dish.name;
+      push({ role: "user", text });
+      const result = answer(text, context());
+      if (result.cart) applyCart(result.cart);
+      reply(result);
+      return;
+    }
     if (action.kind === "recap") return showRecap();
     if (action.kind === "confirm") return confirmOrder();
+    if (action.kind === "send") return sendPending();
     if (action.kind === "reset") {
-      setCart([]);
-      cartRef.current = [];
+      applyCart([]);
       return reply({ text: "Commande effacée. On repart de zéro." });
     }
     return reply(answer("la carte", context()));
-  };
+  }
 
-  const startListening = () => {
+  function startListening() {
     const Recognition = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
     if (!Recognition) {
       reply({ text: "La saisie vocale n'est pas disponible sur ce navigateur. Tu peux m'écrire, je réponds pareil." });
@@ -192,13 +251,14 @@ export default function ChatWidget({ dishes, allDishes, status, hours, formatPri
     recognition.start();
     recognitionRef.current = recognition;
     setListening(true);
-  };
+  }
 
   return (
     <>
-      <button className={`chat-fab ${open ? "is-open" : ""}`} type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-controls="bely-chat">
-        {open ? <X size={19} /> : <MessageCircle size={18} />}
-        <span>{open ? "Fermer" : "Commander"}</span>
+      <button className={`chat-fab ${open ? "is-open" : ""} ${pending ? "has-pending" : ""}`} type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-controls="bely-chat" aria-label={open ? "Fermer l'assistant" : "Ouvrir l'assistant de commande"}>
+        {open ? <X size={19} /> : <MessageCircle size={19} />}
+        <span>{open ? "Fermer" : "Assistant"}</span>
+        {pending && !open && <i className="chat-fab__dot" aria-hidden="true" />}
       </button>
 
       {open && (
@@ -207,7 +267,7 @@ export default function ChatWidget({ dishes, allDishes, status, hours, formatPri
             <span className="chat-avatar"><ChefHat size={17} /></span>
             <div className="chat-identity">
               <strong id="chat-title">Assistant Bely</strong>
-              <small><i className={online ? "is-online" : ""} /> {online ? "En ligne · répond en direct" : "Hors ligne · réponses enregistrées"}</small>
+              <small><i className={online ? "is-online" : ""} /> {online ? "En ligne · commande en direct" : "Hors ligne · commande possible"}</small>
             </div>
             <button className="chat-voice" type="button" onClick={() => setVoice((value) => !value)} aria-pressed={voice} aria-label={voice ? "Couper la lecture vocale" : "Activer la lecture vocale"}>
               {voice ? <Volume2 size={17} /> : <VolumeX size={17} />}
@@ -230,8 +290,8 @@ export default function ChatWidget({ dishes, allDishes, status, hours, formatPri
                 {message.actions && (
                   <div className="chat-actions">
                     {message.actions.map((action) => (
-                      <button key={action.label} type="button" className={action.kind === "confirm" ? "chat-chip chat-chip--primary" : "chat-chip"} onClick={() => handleAction(action)}>
-                        {action.kind === "confirm" && <Check size={13} />}
+                      <button key={action.label} type="button" className={action.kind === "confirm" || action.kind === "send" ? "chat-chip chat-chip--primary" : "chat-chip"} onClick={() => handleAction(action)}>
+                        {(action.kind === "confirm" || action.kind === "send") && <Check size={13} />}
                         {action.label}
                       </button>
                     ))}
@@ -243,7 +303,7 @@ export default function ChatWidget({ dishes, allDishes, status, hours, formatPri
           </div>
 
           <form className="chat-form" onSubmit={(event) => { event.preventDefault(); send(input); }}>
-            <button type="button" className={`chat-mic ${listening ? "is-listening" : ""}`} onClick={startListening} aria-label={listening ? "Arrêter l'écoute" : "Parler au assistant"} aria-pressed={listening}>
+            <button type="button" className={`chat-mic ${listening ? "is-listening" : ""}`} onClick={startListening} aria-label={listening ? "Arrêter l'écoute" : "Parler à l'assistant"} aria-pressed={listening}>
               <Mic size={17} />
             </button>
             <input ref={inputRef} value={input} onChange={(event) => setInput(event.target.value)} placeholder="Écris ta question ou ta commande…" aria-label="Message" autoComplete="off" />
