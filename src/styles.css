@@ -1,4 +1,4 @@
-
+﻿
 
 :root { --coral: #c44a32; --coral-dark: #ad442e; --cream: #f8f4ef; --paper: #fffdf9; --ink: #241c18; --muted: #8d8178; --line: #eadfd6; color: var(--ink); background: var(--cream); font-family: 'DM Sans', sans-serif; font-synthesis: none; }
 * { box-sizing: border-box; }
@@ -696,10 +696,32 @@ h2 { font-size: clamp(25px, 4vw, 33px); letter-spacing: -.035em; line-height: 1;
 @media (max-width: 720px) {
   .header-brand-lockup { display: none; }
   .app-header__top { align-items: center; gap: 10px; }
-  .brand__logo { height: 34px; width: 100px; }
   .header-icon-group { gap: 6px; }
   .header-icon-group .icon-button { height: 38px; width: 38px; }
   .header-opening { margin-top: 20px; }
+}
+
+/* Logo du coin : mot-symbole typographique, plus grand et plus net */
+.brand__logo { background: transparent; border: 0; border-radius: 0; box-shadow: none; height: auto; width: auto; overflow: visible; }
+.brand__logo img { display: none; }
+.brand__wordmark {
+  color: var(--gold);
+  display: block;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  line-height: 1;
+  padding-right: 17px;
+  white-space: nowrap;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, .45);
+}
+.brand__wordmark i { color: inherit; font-style: italic; }
+.app-footer .brand__logo { height: auto; width: auto; }
+.app-footer .brand__wordmark { font-size: 20px; }
+
+@media (max-width: 720px) {
+  .brand__wordmark { font-size: 20px; }
 }
 
 
