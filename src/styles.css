@@ -725,3 +725,12 @@ h2 { font-size: clamp(25px, 4vw, 33px); letter-spacing: -.035em; line-height: 1;
 }
 
 
+
+/* Pas de marque dans le coin : le titre centré porte seul l'identité */
+.app-header__top .brand { display: none; }
+.app-header__top { justify-content: flex-end; }
+@media (max-width: 720px) {
+  .header-brand-lockup { display: flex; margin: 0 auto 18px; position: static; transform: none; width: auto; }
+  .header-brand-lockup strong { font-size: 26px; }
+  .header-opening { margin-top: 18px; }
+}
