@@ -304,11 +304,16 @@ function App() {
   const allDishes = useMemo(() => Array.from(new Map(Object.values(menuState).flat().map((dish) => [dish.name, dish])).values()), [menuState]);
   const favoriteDishes = useMemo(() => favoriteNames.map((name) => allDishes.find((dish) => dish.name === name)).filter((dish): dish is Dish => Boolean(dish)), [allDishes, favoriteNames]);
   const filteredDishes = useMemo(() => {
-    const matches = dayDishes.filter((dish) => (activeCategory === "Tout" || dish.category === activeCategory) && `${dish.name} ${dish.description}`.toLowerCase().includes(query.toLowerCase()));
+    const needle = query.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const pool = needle ? allDishes : dayDishes;
+    const matches = pool.filter((dish) => {
+      if (!needle) return activeCategory === "Tout" || dish.category === activeCategory;
+      return `${dish.name} ${dish.description}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(needle);
+    });
     if (sortMode === "price-asc") return [...matches].sort((a, b) => a.price - b.price);
     if (sortMode === "price-desc") return [...matches].sort((a, b) => b.price - a.price);
     return matches;
-  }, [activeCategory, dayDishes, query, sortMode]);
+  }, [activeCategory, allDishes, dayDishes, query, sortMode]);
 
   const toggleFavorite = (dish: Dish) => setFavoriteNames((current) => current.includes(dish.name) ? current.filter((name) => name !== dish.name) : [...current, dish.name]);
 
@@ -391,7 +396,7 @@ function App() {
 
       <main className="app-content">
         <div className="content-topline"><span>Menu digital</span><span>Sebenikoro, Bamako</span></div>
-        <div className="search-row"><label className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Rechercher un plat" aria-label="Rechercher un plat" /></label><button className={`icon-button filter-button ${sortMode !== "default" ? "is-active" : ""}`} aria-label={sortMode === "default" ? "Trier par prix croissant" : sortMode === "price-asc" ? "Trier par prix décroissant" : "Revenir à l'ordre du menu"} title={sortMode === "price-asc" ? "Prix croissant" : sortMode === "price-desc" ? "Prix décroissant" : "Trier par prix"} onClick={() => setSortMode(sortMode === "default" ? "price-asc" : sortMode === "price-asc" ? "price-desc" : "default")}><SlidersHorizontal size={18} />{sortMode !== "default" && <span className="filter-button__state">{sortMode === "price-asc" ? "↑" : "↓"}</span>}</button></div>
+        <div className="search-row"><div className="search-box"><Search size={19} className="search-box__icon" aria-hidden="true" /><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Un plat, une envie…" aria-label="Rechercher un plat" enterKeyHint="search" autoComplete="off" spellCheck={false} />{query && <button type="button" className="search-clear" onClick={() => setQuery("")} aria-label="Effacer la recherche"><X size={16} /></button>}</div><button className={`icon-button filter-button ${sortMode !== "default" ? "is-active" : ""}`} aria-label={sortMode === "default" ? "Trier par prix croissant" : sortMode === "price-asc" ? "Trier par prix décroissant" : "Revenir à l'ordre du menu"} title={sortMode === "price-asc" ? "Prix croissant" : sortMode === "price-desc" ? "Prix décroissant" : "Trier par prix"} onClick={() => setSortMode(sortMode === "default" ? "price-asc" : sortMode === "price-asc" ? "price-desc" : "default")}><SlidersHorizontal size={18} />{sortMode !== "default" && <span className="filter-button__state">{sortMode === "price-asc" ? "↑" : "↓"}</span>}</button></div>
 
         <section className="categories-section" aria-labelledby="categories-title"><div className="section-title"><div><span className="eyebrow">Découvrir</span><h2 id="categories-title">Nos catégories</h2></div><span className="section-count">{plural(filteredDishes.length, "plat")}</span></div><div className="category-list" role="tablist" aria-label="Catégories de plats">{categories.map((category) => { const Icon = categoryIcons[category as keyof typeof categoryIcons] ?? ChefHat; const count = dayDishes.filter((dish) => dish.category === category).length; return <button key={category} className={activeCategory === category ? "is-active" : ""} role="tab" aria-selected={activeCategory === category} onClick={() => setActiveCategory(category)}><span className="category-icon"><Icon size={17} /></span><span className="category-label">{category}</span><small>{count}</small></button>; })}</div></section>
 
