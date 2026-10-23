@@ -4,6 +4,7 @@ import { Beef, Bell, BellRing, CalendarDays, Check, ChefHat, ChevronRight, Clock
 import { days, featuredDish, formatPrice, menu, type DayKey, type Dish } from "./data/menu";
 
 import ChatWidget from "./chat/ChatWidget";
+import ShareRow from "./share/ShareRow";
 import "./styles.css";
 
 const defaultCategories = ["Grillades", "Boissons", "Plats", "Fast-food", "Accompagnement"];
@@ -421,6 +422,7 @@ function App() {
               <a className="footer-cta footer-cta--primary" href="#menu"><Utensils size={16} /> Voir la carte</a>
               <a className="footer-cta" href={`tel:${CONTACT.phone.replace(/\s+/g, "")}`}><Phone size={16} /> Nous appeler</a>
             </div>
+            <ShareRow tone="dark" label="Partage la maison" text="Découvre Bely Mechoui, le goût du fait maison à Sebenikoro, Bamako." />
           </div>
           <div className="site-footer__columns">
             <div className="footer-col">
