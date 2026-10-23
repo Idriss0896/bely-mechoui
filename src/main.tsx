@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { Beef, Bell, BellRing, CalendarDays, Check, ChefHat, ChevronRight, Clock3, CookingPot, CupSoda, Flame, Heart, Home, ImagePlus, Info, LayoutDashboard, LogOut, MapPin, MessageCircle, Navigation, Phone, Plus, Salad, Sandwich, Save, Search, Share2, SlidersHorizontal, Sparkles, Trash2, Utensils, UtensilsCrossed, X } from "lucide-react";
 import { days, featuredDish, formatPrice, menu, type DayKey, type Dish } from "./data/menu";
 
+import ChatWidget from "./chat/ChatWidget";
 import "./styles.css";
 
 const defaultCategories = ["Grillades", "Boissons", "Plats", "Fast-food", "Accompagnement"];
@@ -21,8 +22,8 @@ const CONTACT = {
   facebook: "https://www.facebook.com/salamata.soumare.3",
 };
 
-const whatsappLink = (dishName?: string) =>
-  `https://wa.me/${CONTACT.whatsapp}?text=${encodeURIComponent(dishName ? `Bonjour Bely Mechoui, je souhaite commander : ${dishName}.` : "Bonjour Bely Mechoui, je souhaite commander.")}`;
+const whatsappLink = (message = "Bonjour Bely Mechoui, je souhaite commander.") =>
+  `https://wa.me/${CONTACT.whatsapp}?text=${encodeURIComponent(message)}`;
 
 const plural = (count: number, singular: string, pluriel = `${singular}s`) => `${count} ${count > 1 ? pluriel : singular}`;
 
@@ -182,7 +183,7 @@ function DishDetails({ dish, onClose }: { dish: Dish; onClose: () => void }) {
         <div className="detail-sheet__image"><img src={dish.image} alt={dish.name} /><button ref={closeRef} className="icon-button icon-button--light" aria-label="Fermer" onClick={onClose}><X size={19} /></button><button className="icon-button icon-button--light detail-sheet__share" aria-label={`Partager ${dish.name}`} onClick={share}>{shared ? <Check size={17} /> : <Share2 size={17} />}</button></div>
         <div className="detail-sheet__body"><span className="eyebrow">{dish.category}</span><h2 id="dish-detail-title">{dish.name}</h2><p>{dish.description}</p><div className="detail-sheet__facts"><span><Clock3 size={16} /> Préparé avec soin</span><span><Sparkles size={16} /> Signature maison</span></div><div className="detail-sheet__footer"><strong>{formatPrice(dish.price)}</strong><span>Au menu aujourd'hui</span></div>
           <div className="detail-sheet__actions">
-            {CONTACT.whatsapp ? <a className="detail-cta detail-cta--primary" href={whatsappLink(dish.name)} target="_blank" rel="noreferrer"><Utensils size={16} /> Commander sur WhatsApp</a> : null}
+            {CONTACT.whatsapp ? <a className="detail-cta detail-cta--primary" href={whatsappLink(`Bonjour Bely Mechoui, je souhaite commander : ${dish.name}.`)} target="_blank" rel="noreferrer"><Utensils size={16} /> Commander sur WhatsApp</a> : null}
             {CONTACT.phone ? <a className="detail-cta" href={`tel:${CONTACT.phone.replace(/\s+/g, "")}`}><Phone size={16} /> Appeler</a> : null}
             <a className="detail-cta" href={CONTACT.maps} target="_blank" rel="noreferrer"><Navigation size={16} /> Itinéraire</a>
           </div>
@@ -450,6 +451,14 @@ function App() {
         </div>
       </footer>
       <nav className={`bottom-nav ${navVisible ? "is-visible" : "is-hidden"}`} aria-label="Navigation principale"><a href="#accueil" className={activeNav === "accueil" ? "is-active" : ""} aria-current={activeNav === "accueil" ? "page" : undefined} onFocus={() => setActiveNav("accueil")} onClick={() => setActiveNav("accueil")}><Home size={19} /><span>ACCUEIL</span></a><a href="#menu" className={activeNav === "menu" ? "is-active" : ""} aria-current={activeNav === "menu" ? "page" : undefined} onFocus={() => setActiveNav("menu")} onClick={(event) => { event.preventDefault(); setActiveNav("menu"); window.location.hash = "menu"; document.getElementById("popular-title")?.scrollIntoView({ behavior: "smooth" }); }}><UtensilsCrossed size={19} /><span>MENU</span></a><a href="#infos" className={activeNav === "infos" ? "is-active" : ""} aria-current={activeNav === "infos" ? "page" : undefined} onFocus={() => setActiveNav("infos")} onClick={() => setActiveNav("infos")}><Info size={19} /><span>INFOS</span></a></nav>
+      <ChatWidget
+        dishes={dayDishes}
+        allDishes={allDishes}
+        status={status}
+        hours={restaurantHours}
+        formatPrice={formatPrice}
+        whatsappHref={whatsappLink}
+      />
       {selectedDish && <DishDetails dish={selectedDish} onClose={() => setSelectedDish(null)} />}
     </div>
   );
