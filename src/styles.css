@@ -1018,3 +1018,26 @@ html, body { overflow-x: clip; }
   .topbar .icon-button { height: 34px; width: 34px; }
   .search-results { max-height: 260px; }
 }
+
+/* Barre fixe : le bloc de marque est centré, les actions restent à droite */
+.topbar { display: flex; justify-content: space-between; }
+.topbar__lockup { align-items: center; color: var(--gold); display: inline-flex; gap: 9px; left: 50%; position: absolute; text-decoration: none; transform: translateX(-50%); }
+.topbar__text { display: flex; flex-direction: column; gap: 2px; line-height: 1; }
+.topbar__text strong { font-family: 'Cinzel', 'Playfair Display', serif; font-size: 16px; font-weight: 600; letter-spacing: .07em; white-space: nowrap; }
+.topbar__text strong i { font-style: normal; }
+.topbar__text small { color: rgba(233, 182, 111, .78); font-family: 'DM Sans', sans-serif; font-size: 7.5px; font-weight: 700; letter-spacing: .24em; white-space: nowrap; }
+.topbar__mark { background: transparent; border: 1px solid rgba(233, 182, 111, .45); height: 28px; width: 28px; }
+.topbar .header-actions { margin-left: auto; }
+
+@media (max-width: 720px) {
+  .topbar { padding-left: 12px; padding-right: 12px; }
+  .topbar__text strong { font-size: 12px; letter-spacing: .04em; }
+  .topbar__text small { font-size: 6px; letter-spacing: .18em; }
+  .topbar__mark { height: 22px; width: 22px; }
+  .topbar__lockup { gap: 6px; }
+  .topbar .icon-button { height: 32px; width: 32px; }
+  .topbar .header-actions, .topbar .header-icon-group { gap: 4px; }
+}
+@media (max-width: 380px) {
+  .topbar__text small { display: none; }
+}
