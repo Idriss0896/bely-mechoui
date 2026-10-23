@@ -283,8 +283,7 @@ export default function ChatWidget({ dishes, allDishes, status, hours, formatPri
     <>
       {hint && !open && <span className="chat-hint" role="status">Une question ? Je prends ta commande.</span>}
       <button className={`chat-fab ${open ? "is-open" : ""} ${pending ? "has-pending" : ""}`} type="button" onClick={toggleChat} aria-expanded={open} aria-controls="bely-chat" aria-label={open ? "Fermer l'assistant" : "Ouvrir l'assistant de commande"}>
-        {open ? <X size={20} /> : <ChefHat size={22} />}
-        <span>{open ? "Fermer" : "Commander"}</span>
+        {open ? <X size={22} /> : <ChefHat size={26} />}
         {pending && !open && <i className="chat-fab__dot" aria-hidden="true" />}
       </button>
 

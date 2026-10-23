@@ -910,3 +910,18 @@ h2 { font-size: clamp(25px, 4vw, 33px); letter-spacing: -.035em; line-height: 1;
   .chat-fab { height: 58px; width: 58px; }
   .chat-hint { bottom: 162px; font-size: 11px; padding: 9px 11px; right: 16px; }
 }
+
+/* Bouton assistant rond */
+.chat-fab { align-items: center; background: var(--gold); border: 0; border-radius: 50%; box-shadow: 0 16px 36px rgba(233,182,111,.45), 0 4px 10px rgba(33,27,24,.25); display: inline-flex; height: 64px; justify-content: center; padding: 0; width: 64px; }
+.chat-fab::before { background: linear-gradient(160deg, rgba(255,255,255,.38), rgba(255,255,255,0) 58%); border-radius: 50%; content: ""; inset: 0; pointer-events: none; position: absolute; }
+.chat-fab svg { position: relative; z-index: 1; }
+.chat-fab:hover { background: #f2c98c; box-shadow: 0 22px 44px rgba(233,182,111,.55), 0 6px 14px rgba(33,27,24,.28); transform: translateY(-3px) scale(1.07); }
+.chat-fab:active { transform: translateY(0) scale(.94); }
+.chat-fab.is-open { background: var(--coral); color: #fff; }
+.chat-fab.is-open:hover { background: var(--coral-dark); }
+.chat-fab__dot { border-color: #fffdfa; }
+.chat-hint { bottom: 180px; }
+@media (max-width: 720px) {
+  .chat-fab { height: 60px; width: 60px; }
+  .chat-hint { bottom: 168px; }
+}
