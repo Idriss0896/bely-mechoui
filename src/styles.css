@@ -889,3 +889,24 @@ h2 { font-size: clamp(25px, 4vw, 33px); letter-spacing: -.035em; line-height: 1;
 .visit-card__details a.visit-action--call { color: #fff8ef; }
 .visit-card__details a.visit-action--map { color: var(--ink); }
 .visit-card__details a.visit-action--fb { color: #17427a; }
+
+/* Bouton assistant : toque du chef, doré, vivant */
+.chat-fab { background: var(--gold); border: 0; border-radius: 999px; box-shadow: 0 16px 36px rgba(233,182,111,.45), 0 4px 10px rgba(33,27,24,.25); color: var(--ink); font-size: 13px; gap: 9px; padding: 13px 20px; transition: background .2s ease, box-shadow .25s ease, transform .2s ease; }
+.chat-fab:hover { background: #f2c98c; box-shadow: 0 22px 44px rgba(233,182,111,.5), 0 6px 14px rgba(33,27,24,.28); transform: translateY(-3px) scale(1.03); }
+.chat-fab:active { transform: translateY(-1px) scale(.97); }
+.chat-fab.is-open { background: var(--coral); color: #fff; }
+.chat-fab.is-open:hover { background: var(--coral-dark); }
+.chat-fab svg { transition: transform .3s ease; }
+.chat-fab:hover svg { transform: rotate(-8deg) scale(1.08); }
+.chat-fab.is-open:hover svg { transform: rotate(0) scale(1.05); }
+.chat-fab::after { border-color: rgba(233,182,111,.8); }
+.chat-fab__dot { background: var(--coral); border-color: #fffdfa; }
+
+.chat-hint { animation: hint-in .35s ease-out both; background: #fffdfa; border: 1px solid var(--line); border-radius: 14px; bottom: 168px; box-shadow: 0 14px 30px rgba(33,27,24,.16); color: var(--ink); font-size: 12px; font-weight: 600; max-width: 200px; padding: 10px 13px; position: fixed; right: 20px; z-index: 29; }
+.chat-hint::after { background: #fffdfa; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); bottom: -6px; content: ""; height: 10px; position: absolute; right: 22px; transform: rotate(45deg); width: 10px; }
+@keyframes hint-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 720px) {
+  .chat-fab { height: 58px; width: 58px; }
+  .chat-hint { bottom: 162px; font-size: 11px; padding: 9px 11px; right: 16px; }
+}

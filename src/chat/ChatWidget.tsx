@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Check, ChefHat, Mic, MessageCircle, Send, Volume2, VolumeX, X } from "lucide-react";
+﻿import { useEffect, useRef, useState } from "react";
+import { Check, ChefHat, Mic, Send, Volume2, VolumeX, X } from "lucide-react";
 import type { Dish } from "../data/menu";
 import { answer, buildOrderMessage, type CartLine, type ChatAction, type ChatAnswer } from "./knowledge";
 
@@ -42,6 +42,7 @@ export default function ChatWidget({ dishes, allDishes, status, hours, formatPri
   const [voice, setVoice] = useState(false);
   const [online, setOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine));
   const [pending, setPending] = useState(false);
+  const [hint, setHint] = useState(false);
 
   const cartRef = useRef<CartLine[]>([]);
   const listRef = useRef<HTMLDivElement>(null);
@@ -85,6 +86,21 @@ export default function ChatWidget({ dishes, allDishes, status, hours, formatPri
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    let seen = false;
+    try {
+      seen = window.sessionStorage.getItem("bely-chat-hint") === "1";
+    } catch {
+      /* stockage indisponible */
+    }
+    if (seen) return;
+    const show = window.setTimeout(() => setHint(true), 3200);
+    const hide = window.setTimeout(() => setHint(false), 11500);
+    return () => {
+      window.clearTimeout(show);
+      window.clearTimeout(hide);
+    };
+  }, []);
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
@@ -227,6 +243,16 @@ export default function ChatWidget({ dishes, allDishes, status, hours, formatPri
     return reply(answer("la carte", context()));
   }
 
+  function toggleChat() {
+    setHint(false);
+    try {
+      window.sessionStorage.setItem("bely-chat-hint", "1");
+    } catch {
+      /* stockage indisponible */
+    }
+    setOpen((value) => !value);
+  }
+
   function startListening() {
     const Recognition = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
     if (!Recognition) {
@@ -255,9 +281,10 @@ export default function ChatWidget({ dishes, allDishes, status, hours, formatPri
 
   return (
     <>
-      <button className={`chat-fab ${open ? "is-open" : ""} ${pending ? "has-pending" : ""}`} type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-controls="bely-chat" aria-label={open ? "Fermer l'assistant" : "Ouvrir l'assistant de commande"}>
-        {open ? <X size={19} /> : <MessageCircle size={19} />}
-        <span>{open ? "Fermer" : "Assistant"}</span>
+      {hint && !open && <span className="chat-hint" role="status">Une question ? Je prends ta commande.</span>}
+      <button className={`chat-fab ${open ? "is-open" : ""} ${pending ? "has-pending" : ""}`} type="button" onClick={toggleChat} aria-expanded={open} aria-controls="bely-chat" aria-label={open ? "Fermer l'assistant" : "Ouvrir l'assistant de commande"}>
+        {open ? <X size={20} /> : <ChefHat size={22} />}
+        <span>{open ? "Fermer" : "Commander"}</span>
         {pending && !open && <i className="chat-fab__dot" aria-hidden="true" />}
       </button>
 

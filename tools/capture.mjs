@@ -1,4 +1,4 @@
-// Capture et mesure via DevTools : viewport réel forcé, rendu figé, page entière.
+﻿// Capture et mesure via DevTools : viewport réel forcé, rendu figé, page entière.
 // usage: node tools/capture.mjs <url> <largeur> <hauteur> <sortie.png> <mobile:0|1> [selecteurACliquer]
 import { writeFileSync } from "node:fs";
 
@@ -43,7 +43,8 @@ await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFac
 await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
 
 await send("Page.navigate", { url });
-await new Promise((resolve) => setTimeout(resolve, 2600));
+const waitMs = Number(process.argv[8] ?? 2600);
+await new Promise((resolve) => setTimeout(resolve, waitMs));
 
 const expression = `(() => {
   const vw = innerWidth;
