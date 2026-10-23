@@ -2,7 +2,7 @@
 import { createRoot } from "react-dom/client";
 import { Beef, Bell, BellRing, CalendarDays, Check, ChefHat, ChevronRight, Clock3, CookingPot, CupSoda, Flame, Heart, Home, ImagePlus, Info, LayoutDashboard, LogOut, MapPin, MessageCircle, Navigation, Phone, Plus, Salad, Sandwich, Save, Search, Share2, SlidersHorizontal, Sparkles, Trash2, Utensils, UtensilsCrossed, X } from "lucide-react";
 import { days, featuredDish, formatPrice, menu, type DayKey, type Dish } from "./data/menu";
-import { mountDishCardMotion, mountLandingMotion } from "./animations/landingMotion";
+
 import "./styles.css";
 
 const defaultCategories = ["Grillades", "Boissons", "Plats", "Fast-food", "Accompagnement"];
@@ -318,12 +318,22 @@ function App() {
 
   useEffect(() => {
     if (!appRoot.current) return;
-    return mountLandingMotion(appRoot.current);
+    let cleanup: (() => void) | undefined;
+    let cancelled = false;
+    import("./animations/landingMotion").then(({ mountLandingMotion }) => {
+      if (!cancelled && appRoot.current) cleanup = mountLandingMotion(appRoot.current);
+    });
+    return () => { cancelled = true; cleanup?.(); };
   }, []);
 
   useEffect(() => {
     if (!appRoot.current) return;
-    return mountDishCardMotion(appRoot.current);
+    let cleanup: (() => void) | undefined;
+    let cancelled = false;
+    import("./animations/landingMotion").then(({ mountDishCardMotion }) => {
+      if (!cancelled && appRoot.current) cleanup = mountDishCardMotion(appRoot.current);
+    });
+    return () => { cancelled = true; cleanup?.(); };
   }, [filteredDishes]);
 
   useEffect(() => {
@@ -395,7 +405,50 @@ function App() {
         <section className="visit-card" id="infos"><div><span className="eyebrow">Nous trouver</span><h2>À bientôt<br /><i>à Sebenikoro.</i></h2></div><div className="visit-card__details"><span><MapPin size={17} /> Sebenikoro, Bamako, Mali</span><div className="hours-card"><span className="hours-card__title"><Clock3 size={14} /> Horaires</span><ul className="hours-list">{WEEK_ROWS.map((row) => <li key={row.label} className={`hours-row${row.index === today ? " is-today" : ""}${CLOSED_DAYS.includes(row.index) ? " is-closed" : ""}`}><span>{row.label}</span><i aria-hidden="true" /><em>{CLOSED_DAYS.includes(row.index) ? "Fermé" : `${opening.open}h – ${opening.close}h`}</em></li>)}</ul></div><div className="visit-card__actions">{CONTACT.whatsapp && <a className="visit-action visit-action--primary" href={whatsappLink()} target="_blank" rel="noreferrer"><Utensils size={15} /> Commander sur WhatsApp</a>}{CONTACT.phone && <a className="visit-action visit-action--primary" href={`tel:${CONTACT.phone.replace(/\s+/g, "")}`}><Phone size={15} /> Appeler le restaurant</a>}<a className="visit-action" href={CONTACT.maps} target="_blank" rel="noreferrer"><Navigation size={15} /> Itinéraire</a><a className="visit-action" href={CONTACT.facebook} target="_blank" rel="noreferrer">Facebook <ChevronRight size={15} /></a></div></div></section>
       </main>
 
-      <footer className="app-footer"><div className="footer-motion" aria-hidden="true"><span className="footer-motion__orbit footer-motion__orbit--one" /><span className="footer-motion__orbit footer-motion__orbit--two" /><span className="footer-motion__spark footer-motion__spark--one"><Sparkles size={13} /></span><span className="footer-motion__spark footer-motion__spark--two"><UtensilsCrossed size={12} /></span></div><div className="footer-main"><Brand /><span>© 2026 Bely Mechoui</span></div><div className="footer-credits"><span>Réalisé par <strong>AMA-TECH</strong></span><span>Designé par <strong>ICHE</strong></span></div></footer>
+      <footer className="site-footer">
+        <div className="site-footer__glow" aria-hidden="true" />
+        <div className="site-footer__top">
+          <div className="site-footer__cta">
+            <span className="site-footer__brand">BELY <i>MECHOUI</i></span>
+            <h2>Une envie de méchoui&nbsp;?<br /><i>On vous attend.</i></h2>
+            <div className="site-footer__actions">
+              <a className="footer-cta footer-cta--primary" href={whatsappLink()} target="_blank" rel="noreferrer"><MessageCircle size={16} /> Commander sur WhatsApp</a>
+              <a className="footer-cta" href={CONTACT.maps} target="_blank" rel="noreferrer"><Navigation size={16} /> Nous rejoindre</a>
+            </div>
+          </div>
+          <div className="site-footer__columns">
+            <div className="footer-col">
+              <span className="footer-col__title">La maison</span>
+              <a href="#accueil">Accueil</a>
+              <a href="#menu">La carte</a>
+              <a href="#infos">Nous trouver</a>
+            </div>
+            <div className="footer-col">
+              <span className="footer-col__title">Contact</span>
+              <a href={`tel:${CONTACT.phone.replace(/\s+/g, "")}`}>{CONTACT.phone}</a>
+              <a href={whatsappLink()} target="_blank" rel="noreferrer">WhatsApp</a>
+              <a href={CONTACT.facebook} target="_blank" rel="noreferrer">Facebook</a>
+            </div>
+            <div className="footer-col">
+              <span className="footer-col__title">Horaires</span>
+              <span>Mardi – Dimanche</span>
+              <strong className="footer-col__strong">10h – 20h</strong>
+              <span>Lundi fermé</span>
+            </div>
+            <div className="footer-col">
+              <span className="footer-col__title">Adresse</span>
+              <span>Sebenikoro</span>
+              <span>Bamako, Mali</span>
+              <a href={CONTACT.maps} target="_blank" rel="noreferrer">Voir l'itinéraire</a>
+            </div>
+          </div>
+        </div>
+        <div className="site-footer__bottom">
+          <span>© 2026 Bely Mechoui</span>
+          <span className="site-footer__credit">Réalisé par <strong>AMA-TECH</strong> · Designé par <strong>ICHE</strong></span>
+          <a className="site-footer__top-link" href="#accueil">Haut de page <ChevronRight size={14} /></a>
+        </div>
+      </footer>
       <nav className={`bottom-nav ${navVisible ? "is-visible" : "is-hidden"}`} aria-label="Navigation principale"><a href="#accueil" className={activeNav === "accueil" ? "is-active" : ""} aria-current={activeNav === "accueil" ? "page" : undefined} onFocus={() => setActiveNav("accueil")} onClick={() => setActiveNav("accueil")}><Home size={19} /><span>ACCUEIL</span></a><a href="#menu" className={activeNav === "menu" ? "is-active" : ""} aria-current={activeNav === "menu" ? "page" : undefined} onFocus={() => setActiveNav("menu")} onClick={(event) => { event.preventDefault(); setActiveNav("menu"); window.location.hash = "menu"; document.getElementById("popular-title")?.scrollIntoView({ behavior: "smooth" }); }}><UtensilsCrossed size={19} /><span>MENU</span></a><a href="#infos" className={activeNav === "infos" ? "is-active" : ""} aria-current={activeNav === "infos" ? "page" : undefined} onFocus={() => setActiveNav("infos")} onClick={() => setActiveNav("infos")}><Info size={19} /><span>INFOS</span></a></nav>
       {selectedDish && <DishDetails dish={selectedDish} onClose={() => setSelectedDish(null)} />}
     </div>
