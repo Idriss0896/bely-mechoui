@@ -933,3 +933,13 @@ html, body { overflow-x: clip; }
   .topbar__text strong { font-size: 11px; }
   .topbar .icon-button { height: 30px; width: 30px; }
 }
+/* Écrans très étroits : mêmes proportions, sans jamais coller aux actions */
+@media (max-width: 340px) {
+  .topbar { padding: 0 6px 0 10px; }
+  .topbar__lockup { gap: 5px; left: calc(50% - 18px); }
+  .topbar__mark { height: 22px; width: 22px; }
+  .topbar__mark svg { height: 12px; width: 12px; }
+  .topbar__text strong { font-size: 10.5px; }
+  .topbar .icon-button { height: 28px; width: 28px; }
+  .topbar .header-actions, .topbar .header-icon-group { gap: 3px; }
+}
