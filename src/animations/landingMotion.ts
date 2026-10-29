@@ -48,10 +48,10 @@ export function mountLandingMotion(root: HTMLElement) {
 
     gsap.from(".hours-row", {
       autoAlpha: 0,
-      x: compactMotion ? -8 : -14,
-      duration: 0.45,
-      stagger: 0.06,
-      ease: "power2.out",
+      y: compactMotion ? 8 : 12,
+      duration: 0.5,
+      stagger: 0.055,
+      ease: "power3.out",
       scrollTrigger: { trigger: ".hours-list", start: "top 92%", once: true },
     });
 
