@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { createRoot } from "react-dom/client";
 import { Beef, Bell, CalendarDays, Check, ChefHat, ChevronRight, Clock3, CookingPot, CupSoda, DoorClosed, DoorOpen, Flame, Heart, Home, ImagePlus, Info, LayoutDashboard, LogOut, MapPin, MessageCircle, Navigation, Phone, Plus, Salad, Sandwich, Save, Search, Share2, ShieldCheck, SlidersHorizontal, Sparkles, Trash2, Utensils, UtensilsCrossed, X } from "lucide-react";
 import { days, featuredDish, formatPrice, menu, type DayKey, type Dish } from "./data/menu";
@@ -8,6 +8,7 @@ import ShareRow from "./share/ShareRow";
 import NotificationCenter from "./notifications/NotificationCenter";
 import AdminNotifications from "./admin/AdminNotifications";
 import MenuBook from "./menu/MenuBook";
+import QrBadge from "./components/QrBadge";
 import "./styles.css";
 
 const defaultCategories = ["Grillades", "Boissons", "Plats", "Fast-food", "Accompagnement"];
@@ -236,10 +237,6 @@ const categoryIcons = {
 
 const adminDays = days;
 
-function Brand() {
-  return <a className="brand" href="#accueil" aria-label="Bely Mechoui, accueil"><span className="brand__logo"><strong className="brand__wordmark">BELY <i>MECHOUI</i></strong><span className="brand__logo-mark"><ChefHat size={12} /></span></span></a>;
-}
-
 function getTodayMenuDay(): DayKey {
   const dayByNumber: Record<number, DayKey | undefined> = { 0: "dimanche", 2: "mardi", 3: "mercredi", 4: "jeudi", 5: "vendredi", 6: "samedi" };
   return dayByNumber[new Date().getDay()] ?? "mardi";
@@ -456,6 +453,18 @@ function App() {
   const [sortMode, setSortMode] = useState<"default" | "price-asc" | "price-desc">("default");
   const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
   const [bookOpen, setBookOpen] = useState(false);
+
+  // Ouvre le livre directement depuis un QR code (/carte) ou un lien #carte.
+  useEffect(() => {
+    const wantsBook = () =>
+      window.location.pathname.replace(/\/+$/, "") === "/carte" || window.location.hash === "#carte";
+    if (wantsBook()) setBookOpen(true);
+    const onHash = () => {
+      if (wantsBook()) setBookOpen(true);
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [favoritesOpen, setFavoritesOpen] = useState(false);
   const [favoriteNames, setFavoriteNames] = useState<string[]>([]);
@@ -556,13 +565,16 @@ function App() {
         {quickActions}
       </header>
       <header className="app-header">
-        <div className={`header-brand-lockup brand-color-${brandColor}`} aria-label="Bely Mechoui, le goût du fait maison">
-          <span className="header-brand-icon"><ChefHat size={20} strokeWidth={1.9} /></span>
-          <strong>BELY <i>MECHOUI</i></strong>
-          <small>LE GOÛT DU FAIT MAISON</small>
-        </div>
         <div className="header-orbit header-orbit--one" /><div className="header-orbit header-orbit--two" />
-        <div className="app-header__top"><Brand />{quickActions}</div>
+        <div className="app-header__top">
+          <QrBadge />
+          <div className={`header-brand-lockup brand-color-${brandColor}`} aria-label="Bely Mechoui, le goût du fait maison">
+            <span className="header-brand-icon"><ChefHat size={20} strokeWidth={1.9} /></span>
+            <strong>BELY <i>MECHOUI</i></strong>
+            <small>LE GOÛT DU FAIT MAISON</small>
+          </div>
+          {quickActions}
+        </div>
         <div className="app-header__copy"><span className="eyebrow eyebrow--light"><ChefHat size={13} /> LE GOÛT DU FAIT MAISON</span><h1>La cuisine<br /><i>qui rassemble.</i></h1><p>Des plats généreux, préparés avec le feu et le cœur.</p><a className="hero-cta" href="#menu" onClick={(event) => { event.preventDefault(); setBookOpen(true); }}><span>Découvrir la carte</span><ChevronRight size={16} /></a><div className={`hero-hours ${status.open ? "is-open" : "is-closed"}`}><span className="hero-hours__door" aria-hidden="true" key={status.open ? "ouverte" : "fermee"}>{status.open ? <DoorOpen size={18} strokeWidth={1.9} /> : <DoorClosed size={18} strokeWidth={1.9} />}</span><span className="hero-hours__body"><strong>{status.label}</strong><span className="hero-hours__detail">{status.detail}</span></span></div></div>
         <div className="hero-dish"><img src={featuredDish.image} alt="Méchoui de mouton" /><span className="hero-dish__glow" /></div>
         <div className="header-motion-note" aria-hidden="true"><span className="header-motion-note__icon"><Flame size={14} /></span><span><strong>Chaque jour</strong><small>fait maison</small></span><i /><i /><i /></div>
