@@ -1867,3 +1867,32 @@ body.book-open .bottom-nav { opacity: 0 !important; pointer-events: none; visibi
   .bottom-nav { padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
   .chat-panel { inset: 0; }
 }
+/* ------------------------------------------------------------------ */
+/* iOS : plus de voile flou sur la barre de titre                      */
+/* ------------------------------------------------------------------ */
+.topbar {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: linear-gradient(180deg, #2f2520 0%, #191412 100%);
+}
+.topbar__text strong { text-shadow: 0 1px 6px rgba(0, 0, 0, .55); }
+.topbar__text small { text-shadow: 0 1px 4px rgba(0, 0, 0, .5); }
+
+@media (max-width: 860px) {
+  .bottom-nav { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(255, 253, 249, .97); }
+  .search-box,
+  .category-list button,
+  .day-list button { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(255, 255, 255, .95); }
+  .hero-hours { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(33, 27, 24, .82); }
+}
+/* Centrage sans demi-pixel : évite le rendu flou sur iPhone (largeurs impaires) */
+.topbar {
+  left: 0;
+  margin-inline: auto;
+  right: 0;
+  transform: translateY(calc(-100% - 24px));
+}
+.topbar.is-visible { transform: translateY(0); }
+@media (max-width: 860px) {
+  .topbar { width: calc(100% - 20px); }
+}
