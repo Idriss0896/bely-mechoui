@@ -31,12 +31,32 @@ const readCart = (): CartLine[] => {
 
 const total = (cart: CartLine[]) => cart.reduce((sum, line) => sum + line.price * line.qty, 0);
 
+/** Suit la largeur : l'expérience mobile n'est pas la même que la double page. */
+function useIsPhone() {
+  const [phone, setPhone] = useState(() =>
+    typeof window === "undefined" ? false : window.matchMedia("(max-width: 860px)").matches,
+  );
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 860px)");
+    const onChange = () => setPhone(media.matches);
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
+  return phone;
+}
+
 export default function MenuBook({ menu, days, initialDay, hours, status, formatPrice, whatsappHref, onClose }: Props) {
+  const phone = useIsPhone();
   const [opened, setOpened] = useState(false);
+  const [settled, setSettled] = useState(false);
   const [day, setDay] = useState<DayKey>(initialDay);
   const [selected, setSelected] = useState<Dish | null>(null);
+  const [sheetDish, setSheetDish] = useState<Dish | null>(null);
+  const [sheetQty, setSheetQty] = useState(1);
+  const [cartOpen, setCartOpen] = useState(false);
   const [cart, setCart] = useState<CartLine[]>(readCart);
   const [turning, setTurning] = useState(false);
+  const [sent, setSent] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
 
   const dayIndex = days.findIndex((item) => item.key === day);
@@ -44,12 +64,16 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
   const dayLabel = days[dayIndex]?.label ?? "";
   const cartCount = cart.reduce((sum, line) => sum + line.qty, 0);
 
-  // Le livre s'ouvre tout seul, comme une couverture qu'on soulève.
+  // Le livre s'ouvre tout seul : la couverture se soulève, puis se pose derrière les pages.
   useEffect(() => {
-    const timer = window.setTimeout(() => setOpened(true), 220);
     document.body.classList.add("book-open");
+    const openTimer = window.setTimeout(() => setOpened(true), 430);
+    const settleTimer = window.setTimeout(() => setSettled(true), 2250);
+    const focusTimer = window.setTimeout(() => closeRef.current?.focus(), 1700);
     return () => {
-      window.clearTimeout(timer);
+      window.clearTimeout(openTimer);
+      window.clearTimeout(settleTimer);
+      window.clearTimeout(focusTimer);
       document.body.classList.remove("book-open");
     };
   }, []);
@@ -64,28 +88,48 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-      if (event.key === "ArrowRight") goTo(1);
-      if (event.key === "ArrowLeft") goTo(-1);
+      if (event.key === "Escape") {
+        if (sheetDish) return setSheetDish(null);
+        if (cartOpen) return setCartOpen(false);
+        return onClose();
+      }
+      if (sheetDish || cartOpen) return;
+      if (event.key === "ArrowRight") turn(1);
+      if (event.key === "ArrowLeft") turn(-1);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => closeRef.current?.focus(), 400);
-    return () => window.clearTimeout(timer);
-  }, []);
-
-  function goTo(step: number) {
+  function turn(step: number) {
     const next = days[(dayIndex + step + days.length) % days.length];
     if (!next || next.key === day) return;
     setTurning(true);
     window.setTimeout(() => {
       setDay(next.key);
       setSelected(null);
-      window.setTimeout(() => setTurning(false), 40);
-    }, 160);
+      window.setTimeout(() => setTurning(false), 60);
+    }, 190);
+  }
+
+  function jumpTo(key: DayKey) {
+    if (key === day) return;
+    setTurning(true);
+    window.setTimeout(() => {
+      setDay(key);
+      setSelected(null);
+      window.setTimeout(() => setTurning(false), 60);
+    }, 190);
+  }
+
+  function openDish(dish: Dish) {
+    if (dish.unavailable) return;
+    if (phone) {
+      setSheetDish(dish);
+      setSheetQty(1);
+      return;
+    }
+    setSelected(dish);
   }
 
   function add(dish: Dish, quantity = 1) {
@@ -96,6 +140,7 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
       }
       return [...current, { name: dish.name, price: dish.price, qty: quantity }];
     });
+    setSent(false);
   }
 
   function changeQuantity(name: string, delta: number) {
@@ -110,6 +155,8 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
     () => (cart.length ? whatsappHref(buildOrderMessage(cart, formatPrice)) : ""),
     [cart, formatPrice, whatsappHref],
   );
+
+  const others = selected ? dishes.filter((dish) => dish.name !== selected.name) : [];
 
   return (
     <div
@@ -127,7 +174,7 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
         <X size={20} />
       </button>
 
-      <div className={`book ${opened ? "is-open" : ""} ${selected ? "is-detail" : ""}`}>
+      <div className={`book ${opened ? "is-open" : ""} ${settled ? "is-settled" : ""}`}>
         <div className="book__shell">
           {/* Page de gauche : la carte du jour */}
           <section className="book__page book__page--left" aria-label={`Plats du ${dayLabel}`}>
@@ -147,22 +194,14 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
                   type="button"
                   className={item.key === day ? "is-active" : ""}
                   aria-pressed={item.key === day}
-                  onClick={() => {
-                    if (item.key === day) return;
-                    setTurning(true);
-                    window.setTimeout(() => {
-                      setDay(item.key);
-                      setSelected(null);
-                      window.setTimeout(() => setTurning(false), 40);
-                    }, 160);
-                  }}
+                  onClick={() => jumpTo(item.key)}
                 >
                   <span>{item.shortLabel}</span>
                 </button>
               ))}
             </nav>
 
-            <ul className={`book__dishes ${turning ? "is-turning" : ""}`}>
+            <ul className={`book__dishes ${turning ? "is-turning" : ""}`} key={day}>
               {dishes.map((dish, index) => {
                 const inCart = cart.find((line) => line.name === dish.name);
                 return (
@@ -170,16 +209,21 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
                     <button
                       type="button"
                       className={`book-dish ${selected?.name === dish.name ? "is-selected" : ""} ${dish.unavailable ? "is-unavailable" : ""}`}
-                      onClick={() => setSelected(dish)}
-                      aria-pressed={selected?.name === dish.name}
+                      onClick={() => openDish(dish)}
                     >
-                      <span className="book-dish__index">{String(index + 1).padStart(2, "0")}</span>
+                      <span className="book-dish__thumb">
+                        <img src={dish.image} alt="" loading="lazy" decoding="async" />
+                      </span>
                       <span className="book-dish__copy">
                         <strong>{dish.name}</strong>
                         <small>{dish.category}</small>
                       </span>
                       <span className="book-dish__price">{formatPrice(dish.price)}</span>
-                      {inCart && <span className="book-dish__badge" aria-label={`${inCart.qty} dans la commande`}>{inCart.qty}</span>}
+                      {inCart ? (
+                        <span className="book-dish__badge" aria-label={`${inCart.qty} dans la commande`}>{inCart.qty}</span>
+                      ) : (
+                        !dish.unavailable && <span className="book-dish__plus" aria-hidden="true"><Plus size={13} /></span>
+                      )}
                     </button>
                   </li>
                 );
@@ -187,52 +231,50 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
               {dishes.length === 0 && <li className="book__empty">La carte de ce jour arrive bientôt.</li>}
             </ul>
 
+            <div className="book__signature" aria-hidden="true">
+              <span>Bely Mechoui</span>
+              <em>Sebenikoro · Bamako</em>
+            </div>
+
             <footer className="book__page-foot">
-              <button type="button" className="book__turn" onClick={() => goTo(-1)} aria-label="Jour précédent">
+              <button type="button" className="book__turn" onClick={() => turn(-1)} aria-label="Jour précédent">
                 <ChevronLeft size={16} />
               </button>
               <span>
                 <Clock3 size={13} /> {hours.opening}
               </span>
-              <button type="button" className="book__turn" onClick={() => goTo(1)} aria-label="Jour suivant">
+              <button type="button" className="book__turn" onClick={() => turn(1)} aria-label="Jour suivant">
                 <ChevronRight size={16} />
               </button>
             </footer>
           </section>
 
-          {/* Page de droite : le plat choisi et la commande */}
+          {/* Page de droite : le plat choisi et la commande (ordinateur) */}
           <section className="book__page book__page--right" aria-label="Ta commande">
-            <button type="button" className="book__back" onClick={() => setSelected(null)} aria-label="Revenir à la carte">
-              <ChevronLeft size={16} /> La carte
-            </button>
             {selected ? (
               <div className="book-plate" key={selected.name}>
                 <div className="book-plate__media">
-                  <img src={selected.image} alt={selected.name} loading="lazy" />
+                  <img src={selected.image} alt={selected.name} loading="lazy" decoding="async" />
                   <span className="book-plate__tag">{selected.category}</span>
                 </div>
                 <h3>{selected.name}</h3>
                 <p>{selected.description}</p>
                 <div className="book-plate__row">
                   <strong>{formatPrice(selected.price)}</strong>
-                  <button type="button" className="book-plate__add" onClick={() => add(selected)} disabled={selected.unavailable}>
+                  <button type="button" className="book-plate__add" onClick={() => add(selected)}>
                     <Plus size={16} /> Ajouter
                   </button>
                 </div>
-                {selected.unavailable && <small className="book-plate__note">Indisponible aujourd'hui.</small>}
-                {dishes.filter((dish) => dish.name !== selected.name).length > 0 && (
+                {others.length > 0 && (
                   <div className="book-plate__more">
                     <span>À découvrir aussi</span>
                     <div>
-                      {dishes
-                        .filter((dish) => dish.name !== selected.name)
-                        .slice(0, 3)
-                        .map((dish) => (
-                          <button key={dish.name} type="button" onClick={() => setSelected(dish)}>
-                            {dish.name}
-                            <em>{formatPrice(dish.price)}</em>
-                          </button>
-                        ))}
+                      {others.slice(0, 3).map((dish) => (
+                        <button key={dish.name} type="button" onClick={() => setSelected(dish)}>
+                          {dish.name}
+                          <em>{formatPrice(dish.price)}</em>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -289,6 +331,7 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
                 aria-disabled={!cart.length}
                 onClick={(event) => {
                   if (!cart.length) event.preventDefault();
+                  else setSent(true);
                 }}
               >
                 <Check size={16} /> Commander sur WhatsApp
@@ -311,6 +354,137 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
 
         <div className="book__edge" aria-hidden="true" />
       </div>
+
+      {/* Mobile : la commande flottante */}
+      {phone && (
+        <button type="button" className={`book-cart-fab ${cartCount ? "has-items" : ""} ${opened ? "is-ready" : ""}`} onClick={() => setCartOpen(true)}>
+          <ShoppingBag size={17} />
+          <span>Ma commande</span>
+          {cartCount > 0 && <em>{formatPrice(total(cart))}</em>}
+          {cartCount > 0 && <i className="book-cart-fab__count">{cartCount}</i>}
+        </button>
+      )}
+
+      {/* Mobile : la fiche du plat, comme un serveur qui présente l'assiette */}
+      {phone && sheetDish && (
+        <div className="dish-sheet-backdrop" onClick={() => setSheetDish(null)}>
+          <article
+            className="dish-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-label={sheetDish.name}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <span className="dish-sheet__grip" aria-hidden="true" />
+            <button type="button" className="dish-sheet__close" onClick={() => setSheetDish(null)} aria-label="Fermer">
+              <X size={18} />
+            </button>
+            <div className="dish-sheet__media">
+              <img src={sheetDish.image} alt={sheetDish.name} />
+              <span className="book-plate__tag">{sheetDish.category}</span>
+            </div>
+            <div className="dish-sheet__body">
+              <h3>{sheetDish.name}</h3>
+              <p>{sheetDish.description}</p>
+              <div className="dish-sheet__actions">
+                <span className="dish-sheet__qty">
+                  <button type="button" onClick={() => setSheetQty((value) => Math.max(1, value - 1))} aria-label="Moins">
+                    <Minus size={15} />
+                  </button>
+                  <em>{sheetQty}</em>
+                  <button type="button" onClick={() => setSheetQty((value) => Math.min(20, value + 1))} aria-label="Plus">
+                    <Plus size={15} />
+                  </button>
+                </span>
+                <button
+                  type="button"
+                  className="dish-sheet__add"
+                  onClick={() => {
+                    add(sheetDish, sheetQty);
+                    setSheetDish(null);
+                  }}
+                >
+                  Ajouter · {formatPrice(sheetDish.price * sheetQty)}
+                </button>
+              </div>
+            </div>
+          </article>
+        </div>
+      )}
+
+      {/* Mobile : le panier */}
+      {phone && cartOpen && (
+        <div className="cart-sheet-backdrop" onClick={() => setCartOpen(false)}>
+          <section
+            className="cart-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Ma commande"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <span className="dish-sheet__grip" aria-hidden="true" />
+            <header className="cart-sheet__head">
+              <div>
+                <span className="book__eyebrow">Bely Mechoui</span>
+                <h3>Ma commande</h3>
+              </div>
+              <button type="button" onClick={() => setCartOpen(false)} aria-label="Fermer la commande">
+                <X size={18} />
+              </button>
+            </header>
+
+            {sent ? (
+              <div className="cart-sheet__sent">
+                <span className="cart-sheet__check"><Check size={26} /></span>
+                <strong>Commande transmise</strong>
+                <p>WhatsApp est ouvert avec ton récapitulatif : il ne reste qu'à appuyer sur « Envoyer ».</p>
+                <button type="button" onClick={() => setCartOpen(false)}>Continuer la lecture</button>
+              </div>
+            ) : (
+              <>
+                <ul className="cart-sheet__list">
+                  {cart.map((line) => (
+                    <li key={line.name}>
+                      <span className="cart-sheet__name">{line.name}</span>
+                      <span className="cart-sheet__qty">
+                        <button type="button" onClick={() => changeQuantity(line.name, -1)} aria-label={`Retirer un ${line.name}`}>
+                          <Minus size={14} />
+                        </button>
+                        <em>{line.qty}</em>
+                        <button type="button" onClick={() => changeQuantity(line.name, 1)} aria-label={`Ajouter un ${line.name}`}>
+                          <Plus size={14} />
+                        </button>
+                      </span>
+                      <span className="cart-sheet__price">{formatPrice(line.price * line.qty)}</span>
+                    </li>
+                  ))}
+                  {cart.length === 0 && <li className="cart-sheet__empty">Ta commande est vide pour l'instant.</li>}
+                </ul>
+
+                <div className="cart-sheet__total">
+                  <span>Total</span>
+                  <strong>{formatPrice(total(cart))}</strong>
+                </div>
+
+                <a
+                  className={`cart-sheet__order ${cart.length ? "" : "is-disabled"}`}
+                  href={cart.length ? orderHref : undefined}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-disabled={!cart.length}
+                  onClick={(event) => {
+                    if (!cart.length) event.preventDefault();
+                    else setSent(true);
+                  }}
+                >
+                  <Check size={17} /> Envoyer la commande
+                </a>
+                <p className="cart-sheet__note">Le restaurant reçoit le récapitulatif sur WhatsApp et confirme ton plat.</p>
+              </>
+            )}
+          </section>
+        </div>
+      )}
     </div>
   );
 }
