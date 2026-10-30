@@ -555,6 +555,7 @@ function App() {
     <div className="app-shell" id="accueil" ref={appRoot}>
       {isBooting && <div className="splash-screen" role="status" aria-label="Ouverture de Bely Mechoui"><div className="splash-screen__rings" /><div className="splash-screen__logo"><img src="/logo-bely-mechoui.jpg" alt="" /><span><ChefHat size={16} /></span></div><strong>BELY <i>MECHOUI</i></strong><small>LE GOÛT DU FAIT MAISON</small><div className="splash-screen__loader"><i /><i /><i /></div></div>}
       <header className={`topbar ${hasScrolled ? "is-visible" : ""}`} aria-hidden={!hasScrolled}>
+        <QrBadge />
         <a className="topbar__lockup" href="#accueil" aria-label="Bely Mechoui, accueil">
           <span className="topbar__mark"><ChefHat size={14} /></span>
           <span className="topbar__text">

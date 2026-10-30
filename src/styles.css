@@ -1833,3 +1833,37 @@ body.book-open .bottom-nav { opacity: 0 !important; pointer-events: none; visibi
   .qr__frame { height: 40px; padding: 3px; width: 40px; }
   .header-icon-group .icon-button { height: 30px; width: 30px; }
 }
+/* ------------------------------------------------------------------ */
+/* Barre fixe : QR à gauche, marque au centre, actions à droite        */
+/* ------------------------------------------------------------------ */
+.topbar { display: grid; gap: 8px; grid-template-columns: auto minmax(0, 1fr) auto; padding: 0 10px 0 8px; }
+.topbar__lockup { justify-self: center; left: auto; position: static; transform: none; }
+.topbar .qr__frame { border-radius: 10px; height: 40px; padding: 3px; width: 40px; }
+.topbar .qr__logo { height: 13px; width: 13px; }
+.topbar .qr__logo svg { height: 8px; width: 8px; }
+.topbar .header-actions { justify-self: end; margin-left: 0; }
+
+/* Zones sûres iPhone (encoche, barre d'état) */
+.app-header { padding-top: calc(env(safe-area-inset-top, 0px) + 18px); }
+.topbar { top: calc(env(safe-area-inset-top, 0px) + 8px); }
+.bottom-nav { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.app-shell { background: var(--cream); min-height: 100dvh; }
+
+/* Paysage sur téléphone : l'application occupe toute la hauteur */
+@media (max-height: 520px) and (orientation: landscape) {
+  .app-header { min-height: 0; padding: 14px calc(env(safe-area-inset-right, 0px) + 20px) 18px calc(env(safe-area-inset-left, 0px) + 20px); }
+  .app-header__copy { margin-top: 12px; }
+  .app-header__copy h1 { font-size: clamp(26px, 4.2vw, 36px); }
+  .app-header__copy p { display: none; }
+  .hero-dish, .header-motion-note { display: none; }
+  .app-content { margin-top: -12px; padding-left: calc(env(safe-area-inset-left, 0px) + 20px); padding-right: calc(env(safe-area-inset-right, 0px) + 20px); }
+  .book__page { padding: 12px 16px 8px; }
+  .book__page-head h2 { font-size: 22px; }
+  .book__days { margin: 8px 0; }
+  .book__group-head { padding: 6px 8px 2px; }
+  .book__signature { display: none; }
+  .book__page--left { padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
+  .book-cart-fab { bottom: calc(8px + env(safe-area-inset-bottom, 0px)); padding: 11px 16px; }
+  .bottom-nav { padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+  .chat-panel { inset: 0; }
+}

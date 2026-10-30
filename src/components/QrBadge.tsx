@@ -9,6 +9,19 @@ const targetUrl = () => {
   return `${window.location.origin}/carte`;
 };
 
+/** Deux QR cohabitent (en-tête + barre fixe) : une seule génération partagée. */
+let cachedCode: Promise<string> | null = null;
+
+function qrCode(url: string) {
+  cachedCode ??= QRCode.toDataURL(url, {
+    margin: 1,
+    width: 420,
+    errorCorrectionLevel: "H",
+    color: { dark: "#211b18", light: "#ffffff" },
+  });
+  return cachedCode;
+}
+
 export default function QrBadge() {
   const [code, setCode] = useState("");
   const [open, setOpen] = useState(false);
@@ -17,12 +30,7 @@ export default function QrBadge() {
 
   useEffect(() => {
     let alive = true;
-    QRCode.toDataURL(url, {
-      margin: 1,
-      width: 420,
-      errorCorrectionLevel: "H",
-      color: { dark: "#211b18", light: "#ffffff" },
-    })
+    qrCode(url)
       .then((data) => {
         if (alive) setCode(data);
       })
