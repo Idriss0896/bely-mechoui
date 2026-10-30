@@ -16,7 +16,7 @@ type Matrix = { size: number; path: string };
  * le code s'affiche immédiatement, et reste net à toutes les tailles.
  */
 function buildMatrix(url: string): Matrix {
-  const qr = QRCode.create(url, { errorCorrectionLevel: "H" });
+  const qr = QRCode.create(url, { errorCorrectionLevel: "M" });
   const size = qr.modules.size;
   const data = qr.modules.data;
   const chunks: string[] = [];
@@ -37,7 +37,8 @@ function getMatrix(url: string) {
 }
 
 function QrSvg({ matrix, className }: { matrix: Matrix; className?: string }) {
-  const quiet = 2;
+  // Zone de silence de 4 modules : c'est ce que réclament les appareils photo.
+  const quiet = 4;
   return (
     <svg
       className={className}
@@ -83,7 +84,6 @@ export default function QrBadge() {
       >
         <span className="qr__frame">
           <QrSvg matrix={matrix} className="qr__img" />
-          <span className="qr__logo" aria-hidden="true"><ChefHat size={11} /></span>
         </span>
         <span className="qr__glow" aria-hidden="true" />
       </button>
