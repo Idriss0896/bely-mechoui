@@ -81,7 +81,9 @@ export function useNotifications() {
     const listener = () => bump();
     listeners.add(listener);
     void loadNotifications();
-    const timer = window.setInterval(loadNotifications, 60_000);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void loadNotifications();
+    }, 60_000);
     const onFocus = () => void loadNotifications();
     window.addEventListener("focus", onFocus);
     window.addEventListener("online", onFocus);

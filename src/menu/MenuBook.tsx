@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Check, ChefHat, ChevronLeft, ChevronRight, Clock3, CookingPot, CupSoda, Flame, Minus, Plus, Salad, Sandwich, ShoppingBag, Sparkles, X } from "lucide-react";
 import type { Dish, DayKey } from "../data/menu";
 import { buildOrderMessage, type CartLine } from "../chat/knowledge";
+import { imageSet, imageUrl } from "../data/images";
 
 type MenuState = Record<DayKey, Dish[]>;
 
@@ -288,7 +289,7 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
                       onClick={() => openDish(dish)}
                     >
                       <span className="book-card__media">
-                        <img src={dish.image} alt={dish.name} loading="lazy" decoding="async" />
+                        <img src={imageUrl(dish.image, 520)} srcSet={imageSet(dish.image, [360, 520, 720]) || undefined} sizes="(max-width: 860px) 45vw, 240px" alt={dish.name} loading="lazy" decoding="async" />
                         {inCart && <span className="book-card__badge" aria-label={`${inCart.qty} dans la commande`}>{inCart.qty}</span>}
                         {dish.unavailable && <span className="book-card__off">Indisponible</span>}
                       </span>
@@ -330,7 +331,7 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
             {selected ? (
               <div className="book-plate" key={selected.name}>
                 <div className="book-plate__media">
-                  <img src={selected.image} alt={selected.name} loading="lazy" decoding="async" />
+                  <img src={imageUrl(selected.image, 900)} alt={selected.name} loading="lazy" decoding="async" />
                   <span className="book-plate__tag">{selected.category}</span>
                 </div>
                 <h3>{selected.name}</h3>
@@ -456,7 +457,7 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
               <X size={18} />
             </button>
             <div className="dish-sheet__media">
-              <img src={sheetDish.image} alt={sheetDish.name} />
+              <img src={imageUrl(sheetDish.image, 900)} alt={sheetDish.name} decoding="async" />
               <span className="book-plate__tag">{sheetDish.category}</span>
             </div>
             <div className="dish-sheet__body">
