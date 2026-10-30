@@ -1635,3 +1635,79 @@ body.book-open .bottom-nav { opacity: 0 !important; pointer-events: none; visibi
   .book__days { margin: 12px 0 10px; }
   .book__page-foot { margin-top: 6px; padding-top: 8px; }
 }
+/* Carte du livre : grandes photos, deux colonnes */
+.book__dishes { align-content: start; display: grid; gap: 12px 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.book__group-head { grid-column: 1 / -1; }
+.book-card-item { display: flex; }
+.book-card {
+  background: #fff;
+  border: 1px solid rgba(33, 27, 24, .08);
+  border-radius: 16px;
+  box-shadow: 0 12px 26px -22px rgba(33, 27, 24, .65);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  text-align: left;
+  transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+  width: 100%;
+}
+.book-card:hover { box-shadow: 0 20px 32px -24px rgba(33, 27, 24, .7); transform: translateY(-3px); }
+.book-card.is-selected { border-color: rgba(196, 74, 50, .55); box-shadow: 0 0 0 2px rgba(196, 74, 50, .18), 0 20px 32px -24px rgba(196, 74, 50, .5); }
+.book-card.is-unavailable { opacity: .55; }
+.book-card__media { aspect-ratio: 4 / 3; background: #f1e7d8; display: block; overflow: hidden; position: relative; width: 100%; }
+.book-card__media img { height: 100%; object-fit: cover; object-position: center; transition: transform .55s cubic-bezier(.2, .8, .2, 1); width: 100%; }
+.book-card:hover .book-card__media img { transform: scale(1.07); }
+.book-card__badge { align-items: center; background: var(--coral); border: 2px solid #fff; border-radius: 999px; color: #fff; display: flex; font-size: 10px; font-weight: 800; height: 22px; justify-content: center; position: absolute; right: 8px; top: 8px; width: 22px; }
+.book-card__off { background: rgba(33, 27, 24, .72); border-radius: 999px; bottom: 8px; color: #fff8ef; font-size: 9px; font-weight: 700; left: 8px; letter-spacing: .08em; padding: 4px 8px; position: absolute; text-transform: uppercase; }
+.book-card__body { display: flex; flex: 1; flex-direction: column; gap: 8px; justify-content: space-between; padding: 10px 11px 11px; }
+.book-card__body strong { display: -webkit-box; font-size: 13px; -webkit-box-orient: vertical; -webkit-line-clamp: 2; letter-spacing: .005em; line-height: 1.25; overflow: hidden; }
+.book-card__foot { align-items: center; display: flex; justify-content: space-between; }
+.book-card__foot em { color: var(--coral-dark); font-family: 'Playfair Display', serif; font-size: 15px; font-style: normal; }
+.book-card__add { align-items: center; background: rgba(33, 27, 24, .06); border-radius: 50%; color: var(--ink); display: flex; height: 24px; justify-content: center; transition: background .2s, color .2s; width: 24px; }
+.book-card:hover .book-card__add { background: var(--ink); color: #fff8ef; }
+
+@media (max-width: 860px) {
+  .book__dishes { gap: 10px; padding-left: 2px; padding-right: 2px; }
+  .book-card { border-radius: 15px; }
+  .book-card__media { aspect-ratio: 1 / 1; }
+  .book-card__body { gap: 6px; padding: 9px 10px 10px; }
+  .book-card__body strong { font-size: 12.5px; }
+  .book-card__foot em { font-size: 13.5px; }
+  .book-card__add { height: 22px; width: 22px; }
+}
+/* Photos : cartes horizontales sur ordinateur, pleine largeur quand un seul plat */
+@media (min-width: 861px) {
+  .book__dishes { gap: 8px; grid-template-columns: 1fr; }
+  .book-card { flex-direction: row; }
+  .book-card__media { aspect-ratio: auto; flex: 0 0 132px; width: 132px; }
+  .book-card__body { gap: 6px; justify-content: center; padding: 10px 14px; }
+  .book-card__body strong { font-size: 14px; }
+  .book-card__foot em { font-size: 16px; }
+}
+
+@media (max-width: 860px) {
+  .book-card-item.is-single { grid-column: 1 / -1; }
+  .book-card-item.is-single .book-card { flex-direction: row; }
+  .book-card-item.is-single .book-card__media { aspect-ratio: auto; flex: 0 0 45%; width: 45%; }
+  .book-card-item.is-single .book-card__body { justify-content: center; padding: 12px 14px; }
+}
+/* Ordinateur : grandes cartes verticales, et carte pleine largeur quand la section n'a qu'un plat */
+@media (min-width: 861px) {
+  .book__dishes { gap: 10px 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .book-card { flex-direction: column; }
+  .book-card__media { aspect-ratio: 4 / 3; flex: 0 0 auto; width: 100%; }
+  .book-card__body { gap: 8px; justify-content: space-between; padding: 10px 11px 11px; }
+  .book-card__body strong { font-size: 13px; }
+  .book-card-item.is-single { grid-column: 1 / -1; }
+  .book-card-item.is-single .book-card { flex-direction: row; min-height: 150px; }
+  .book-card-item.is-single .book-card__media { aspect-ratio: auto; flex: 0 0 190px; width: 190px; }
+  .book-card-item.is-single .book-card__body { gap: 8px; justify-content: center; padding: 12px 16px; }
+  .book-card-item.is-single .book-card__body strong { font-size: 16px; }
+}
+/* Description uniquement sur les cartes pleine largeur */
+.book-card__desc { color: var(--muted); display: none; font-size: 12px; line-height: 1.45; }
+.book-card-item.is-single .book-card__desc { -webkit-box-orient: vertical; -webkit-line-clamp: 2; display: -webkit-box; overflow: hidden; }
+@media (max-width: 860px) {
+  .book-card-item.is-single .book-card__desc { font-size: 11.5px; }
+}

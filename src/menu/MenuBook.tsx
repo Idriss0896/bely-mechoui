@@ -200,7 +200,7 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
     );
   }, [menu, dishes]);
 
-  type Row = { kind: "head"; key: string; label: string; count: number; icon: ReactNode; staples?: boolean } | { kind: "dish"; dish: Dish };
+  type Row = { kind: "head"; key: string; label: string; count: number; icon: ReactNode; staples?: boolean } | { kind: "dish"; dish: Dish; single: boolean };
 
   const rows = useMemo<Row[]>(() => {
     const list: Row[] = [];
@@ -213,11 +213,11 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
         count: group.items.length,
         icon: meta?.icon ?? <ChefHat size={12} />,
       });
-      for (const dish of group.items) list.push({ kind: "dish", dish });
+      for (const dish of group.items) list.push({ kind: "dish", dish, single: group.items.length === 1 });
     }
     if (staples.length) {
       list.push({ kind: "head", key: "staples", label: "Toujours au menu", count: staples.length, icon: <Sparkles size={12} />, staples: true });
-      for (const dish of staples) list.push({ kind: "dish", dish });
+      for (const dish of staples) list.push({ kind: "dish", dish, single: false });
     }
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -281,25 +281,25 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
                 const dish = row.dish;
                 const inCart = cart.find((line) => line.name === dish.name);
                 return (
-                  <li key={dish.name} style={{ animationDelay: `${Math.min(index, 14) * 35}ms` }}>
+                  <li key={dish.name} className={`book-card-item ${row.single ? "is-single" : ""}`} style={{ animationDelay: `${Math.min(index, 14) * 35}ms` }}>
                     <button
                       type="button"
-                      className={`book-dish ${selected?.name === dish.name ? "is-selected" : ""} ${dish.unavailable ? "is-unavailable" : ""}`}
+                      className={`book-card ${selected?.name === dish.name ? "is-selected" : ""} ${dish.unavailable ? "is-unavailable" : ""}`}
                       onClick={() => openDish(dish)}
                     >
-                      <span className="book-dish__thumb">
-                        <img src={dish.image} alt="" loading="lazy" decoding="async" />
+                      <span className="book-card__media">
+                        <img src={dish.image} alt={dish.name} loading="lazy" decoding="async" />
+                        {inCart && <span className="book-card__badge" aria-label={`${inCart.qty} dans la commande`}>{inCart.qty}</span>}
+                        {dish.unavailable && <span className="book-card__off">Indisponible</span>}
                       </span>
-                      <span className="book-dish__copy">
+                      <span className="book-card__body">
                         <strong>{dish.name}</strong>
-                        <small>{dish.category}</small>
+                        <span className="book-card__desc">{dish.description}</span>
+                        <span className="book-card__foot">
+                          <em>{formatPrice(dish.price)}</em>
+                          <span className="book-card__add" aria-hidden="true"><Plus size={13} /></span>
+                        </span>
                       </span>
-                      <span className="book-dish__price">{formatPrice(dish.price)}</span>
-                      {inCart ? (
-                        <span className="book-dish__badge" aria-label={`${inCart.qty} dans la commande`}>{inCart.qty}</span>
-                      ) : (
-                        !dish.unavailable && <span className="book-dish__plus" aria-hidden="true"><Plus size={13} /></span>
-                      )}
                     </button>
                   </li>
                 );
