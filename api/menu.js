@@ -95,7 +95,7 @@ export default async function handler(request, response) {
         return response.status(200).json({ configured: true, updatedAt: normalizedStamp(rows[0]?.updated_at) });
       }
 
-      const rows = await sql`select menu, categories, hours, updated_at from bely_menu where id = 1`;
+      const rows = await sql`select menu, categories, hours, images, updated_at from bely_menu where id = 1`;
       if (!rows.length) {
         return response.status(200).json({ configured: true, seed: true, updatedAt: normalizedStamp(null) });
       }
@@ -104,6 +104,7 @@ export default async function handler(request, response) {
         menu: rows[0].menu,
         categories: rows[0].categories,
         hours: rows[0].hours,
+        images: rows[0].images ?? {},
         updatedAt: normalizedStamp(rows[0].updated_at),
       });
     }
@@ -150,25 +151,36 @@ export default async function handler(request, response) {
       }
 
       const body = readBody(request);
-      const { menu, categories, hours } = body;
+      const { menu, categories, hours, images } = body;
 
       if (!menuIsValid(menu) || !Array.isArray(categories) || categories.some((category) => typeof category !== "string")) {
         return response.status(400).json({ error: "Données invalides" });
       }
 
+      // Photos de catégories : uniquement des chaînes (URL ou data URL) de taille raisonnable.
+      const imagesPayload = images && typeof images === "object" && !Array.isArray(images) ? images : {};
+      const imagesValid = Object.entries(imagesPayload).every(
+        ([key, value]) => typeof key === "string" && typeof value === "string" && value.length <= 400_000,
+      );
+      if (!imagesValid) {
+        return response.status(400).json({ error: "Photos de catégories invalides" });
+      }
+
       const rows = await sql`
-        insert into bely_menu (id, menu, categories, hours, updated_at)
+        insert into bely_menu (id, menu, categories, hours, images, updated_at)
         values (
           1,
           ${JSON.stringify(menu)}::jsonb,
           ${JSON.stringify(categories)}::jsonb,
           ${JSON.stringify(hours ?? {})}::jsonb,
+          ${JSON.stringify(imagesPayload)}::jsonb,
           now()
         )
         on conflict (id) do update
           set menu = excluded.menu,
               categories = excluded.categories,
               hours = excluded.hours,
+              images = excluded.images,
               updated_at = now()
         returning updated_at
       `;

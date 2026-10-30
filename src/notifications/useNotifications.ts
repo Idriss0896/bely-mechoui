@@ -64,6 +64,32 @@ async function loadNotifications() {
   return inflight;
 }
 
+/** Petit carillon quand une nouvelle annonce arrive pendant la consultation. */
+function playChime() {
+  try {
+    const AudioCtx = window.AudioContext ?? (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const context = new AudioCtx();
+    const now = context.currentTime;
+    [880, 1174].forEach((frequency, index) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      const start = now + index * 0.12;
+      oscillator.type = "sine";
+      oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.16, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.24);
+      oscillator.connect(gain).connect(context.destination);
+      oscillator.start(start);
+      oscillator.stop(start + 0.26);
+    });
+    window.setTimeout(() => void context.close().catch(() => undefined), 800);
+  } catch {
+    /* audio indisponible : la notification visuelle suffit */
+  }
+}
+
 export function useNotifications() {
   const [, bump] = useReducer((value: number) => value + 1, 0);
   const [lastSeen, setLastSeen] = useState(readLastSeen);
@@ -107,8 +133,45 @@ export function useNotifications() {
     if (!latest) return;
     window.localStorage.setItem(LAST_SEEN_KEY, String(latest));
     setLastSeen(latest);
+    if ("clearAppBadge" in navigator) void navigator.clearAppBadge?.();
     navigator.serviceWorker?.controller?.postMessage({ type: "bely-badge-clear" });
   }, [items]);
+
+  // Ouverture depuis une notification poussée : le compteur repart à zéro.
+  useEffect(() => {
+    const pushed = Number(new URLSearchParams(window.location.search).get("push"));
+    if (!Number.isFinite(pushed) || pushed <= 0) return;
+    if (pushed > readLastSeen()) {
+      window.localStorage.setItem(LAST_SEEN_KEY, String(pushed));
+      setLastSeen(pushed);
+    }
+    const params = new URLSearchParams(window.location.search);
+    params.delete("push");
+    const query = params.toString();
+    window.history.replaceState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
+  }, []);
+
+  // Un tap sur la notification pendant que l'application est ouverte.
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    const onMessage = (event: MessageEvent) => {
+      if (event.data?.type === "bely-notification-click") {
+        void loadNotifications();
+        markAllRead();
+      }
+    };
+    navigator.serviceWorker.addEventListener("message", onMessage);
+    return () => navigator.serviceWorker.removeEventListener("message", onMessage);
+  }, [markAllRead]);
+
+  // Carillon à l'arrivée d'une nouvelle annonce, application au premier plan.
+  const previousTop = useRef(0);
+  useEffect(() => {
+    const top = items.length ? items[0].id : 0;
+    const isNew = previousTop.current > 0 && top > previousTop.current && top > lastSeen;
+    previousTop.current = top;
+    if (isNew && document.visibilityState === "visible") playChime();
+  }, [items, lastSeen]);
 
   // Abonnement existant ?
   useEffect(() => {

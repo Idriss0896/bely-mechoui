@@ -1,4 +1,4 @@
-﻿import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { createRoot } from "react-dom/client";
 import { Bell, CalendarDays, Check, ChefHat, ChevronRight, Clock3, DoorClosed, DoorOpen, Flame, Heart, Home, ImagePlus, Info, LayoutDashboard, LogOut, MapPin, MessageCircle, Navigation, Phone, Plus, Save, Search, Share2, ShieldCheck, SlidersHorizontal, Sparkles, Trash2, Utensils, UtensilsCrossed, X } from "lucide-react";
 import { days, featuredDish, formatPrice, menu, type DayKey, type Dish } from "./data/menu";
@@ -91,10 +91,10 @@ function openStatus(opening: Opening): OpeningStatus {
 type MenuState = Record<DayKey, Dish[]>;
 
 type Hours = { opening: string; days: string };
-type MenuPayload = { menu: MenuState; categories: string[]; hours: Hours };
+type MenuPayload = { menu: MenuState; categories: string[]; hours: Hours; images: Record<string, string> };
 type MenuSource = "chargement" | "base" | "statique";
 
-const defaultPayload: MenuPayload = { menu, categories: defaultCategories, hours: defaultHours };
+const defaultPayload: MenuPayload = { menu, categories: defaultCategories, hours: defaultHours, images: {} };
 
 /** Une carte partielle (jour manquant) ne doit jamais casser l'affichage. */
 function normalizeMenu(raw: unknown): MenuState {
@@ -179,6 +179,7 @@ function useMenuData() {
           menu: normalizeMenu(data.menu),
           categories: (data.categories as string[]) ?? defaultCategories,
           hours: (data.hours as Hours) ?? defaultHours,
+          images: (data.images as Record<string, string>) ?? {},
         });
       }
       setSource("base");
@@ -291,6 +292,30 @@ type AdminDraft = Dish & { originDay: DayKey; originalName: string };
 
 const ADMIN_TOKEN_KEY = "bely-admin-token";
 
+/** Redimensionne et compresse la photo choisie dans l'admin (avant stockage en base). */
+function compressImage(file: File, maxWidth: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("lecture"));
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = () => reject(new Error("décodage"));
+      image.onload = () => {
+        const scale = Math.min(1, maxWidth / image.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(image.width * scale));
+        canvas.height = Math.max(1, Math.round(image.height * scale));
+        const context = canvas.getContext("2d");
+        if (!context) return reject(new Error("canvas"));
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.78));
+      };
+      image.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 function AdminApp() {
   const { payload, source, apply } = useMenuData();
   const [token, setToken] = useState(() => sessionStorage.getItem(ADMIN_TOKEN_KEY) ?? "");
@@ -303,6 +328,7 @@ function AdminApp() {
   const noticeTimer = useRef(0);
   const [categoryText, setCategoryText] = useState(() => payload.categories.join(", "));
   const [hours, setHours] = useState<Hours>(payload.hours);
+  const [imagesState, setImagesState] = useState<Record<string, string>>(payload.images ?? {});
   const [saving, setSaving] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -316,8 +342,18 @@ function AdminApp() {
     setMenuState(payload.menu);
     setCategoriesState(payload.categories);
     setHours(payload.hours);
+    setImagesState(payload.images ?? {});
     setCategoryText(payload.categories.join(", "));
   }, [payload, draft, saving]);
+
+  /** Aperçu des photos de catégories dans l'administration. */
+  const adminPhotos = useMemo(() => {
+    const photos: Record<string, string> = {};
+    for (const dish of Object.values(menuState).flat()) {
+      if (!photos[dish.category] && dish.image) photos[dish.category] = imageUrl(dish.image, 320);
+    }
+    return photos;
+  }, [menuState]);
 
   /** Chaque action se termine par une phrase : réussie (verte) ou échouée (corail). */
   const showNotice = (message: string, ok = true) => {
@@ -326,22 +362,23 @@ function AdminApp() {
     noticeTimer.current = window.setTimeout(() => setNotice(null), 4200);
   };
 
-  const commit = async (nextMenu: MenuState, nextCategories = categoriesState, nextHours = hours) => {
+  const commit = async (nextMenu: MenuState, nextCategories = categoriesState, nextHours = hours, nextImages = imagesState) => {
     if (source !== "base") { showNotice("Base non configurée : rien n'est enregistré", false); return; }
     const previous = { menu: menuState, categories: categoriesState, hours };
     setMenuState(nextMenu);
     setCategoriesState(nextCategories);
     setHours(nextHours);
+    setImagesState(nextImages);
     setSaving(true);
     try {
       const response = await fetch("/api/menu", {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ menu: nextMenu, categories: nextCategories, hours: nextHours }),
+        body: JSON.stringify({ menu: nextMenu, categories: nextCategories, hours: nextHours, images: nextImages }),
       });
       if (response.ok) {
         const data = await response.json().catch(() => ({}));
-        apply({ menu: nextMenu, categories: nextCategories, hours: nextHours }, asStamp(data.updatedAt));
+        apply({ menu: nextMenu, categories: nextCategories, hours: nextHours, images: nextImages }, asStamp(data.updatedAt));
         showNotice("Enregistré · le site est à jour");
         return;
       }
@@ -376,10 +413,22 @@ function AdminApp() {
   const deleteDish = (dish: Dish) => commit({ ...menuState, [selectedDay]: menuState[selectedDay].filter((item) => item !== dish) });
   const updateCategories = () => {
     const nextCategories = categoryText.split(",").map((category) => category.trim()).filter(Boolean);
-    if (!nextCategories.length) return;
-    commit(menuState, nextCategories);
+    if (!nextCategories.length) return showNotice("Ajoute au moins une catégorie", false);
+    commit(menuState, nextCategories, hours, imagesState);
+    showNotice("Catégories et photos enregistrées");
   };
-  const updateHours = () => commit(menuState, categoriesState, hours);
+  const updateHours = () => commit(menuState, categoriesState, hours, imagesState);
+
+  /** Réduit la photo choisie (720 px, JPEG) avant de l'envoyer en base. */
+  const pickCategoryPhoto = async (category: string, file: File) => {
+    try {
+      const dataUrl = await compressImage(file, 720);
+      setImagesState((current) => ({ ...current, [category]: dataUrl }));
+      showNotice(`Photo « ${category} » prête · enregistre pour publier`);
+    } catch {
+      showNotice("Photo illisible : choisis une image JPG ou PNG", false);
+    }
+  };
 
   const changePassword = async () => {
     if (newPassword.length < 6) return showNotice("6 caractères minimum", false);
@@ -436,7 +485,7 @@ function AdminApp() {
   if (!authenticated) return <main className="admin-login"><div className="admin-login__glow" /><div className="admin-login__card"><div className="admin-login__brand"><span><ChefHat size={25} /></span><small>ESPACE PRIVÉ</small><h1>BELY <i>MECHOUI</i></h1></div><p>Connecte-toi pour gérer la carte du restaurant.</p><form onSubmit={handleLogin}><label>Mot de passe<input value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="current-password" autoFocus /></label><button className="admin-primary" type="submit"><LayoutDashboard size={17} /> Ouvrir le tableau de bord</button></form>{toast}<a className="admin-back" href="/#accueil">Retour au site public</a></div></main>;
 
   const totalDishes = Object.values(menuState).flat().length;
-  return <main className="admin-shell"><header className="admin-header"><a className="admin-brand" href="/#accueil"><span><ChefHat size={19} /></span><strong>BELY <i>MECHOUI</i></strong></a><div className="admin-header__actions"><span className="admin-status"><span /> {source === "base" ? "Base connectée" : source === "chargement" ? "Connexion à la base…" : "Mode démo · non enregistré"}</span><button className="admin-logout" onClick={logout}><LogOut size={16} /> Déconnexion</button></div></header><div className="admin-layout"><aside className="admin-sidebar"><span className="admin-eyebrow">Administration</span><h1>Tableau de bord</h1><p>Gère le menu, les horaires et l’image de Bely Mechoui depuis un seul endroit.</p><div className="admin-side-links"><a className="is-active" href="#dashboard"><LayoutDashboard size={17} /> Vue générale</a><a href="#menu-admin"><UtensilsCrossed size={17} /> Menus</a><a href="#settings-admin"><Clock3 size={17} /> Horaires & catégories</a><a href="#notifications-admin"><Bell size={17} /> Notifications</a></div></aside><section className="admin-content" id="dashboard">{toast}<div className="admin-page-heading"><div><span className="admin-eyebrow">Vue générale</span><h2>Bonjour, Bely.</h2></div><span className="admin-date"><CalendarDays size={16} /> {new Intl.DateTimeFormat("fr-FR", { dateStyle: "long" }).format(new Date())}</span></div><div className="admin-stats"><div><span className="admin-stat-icon"><Utensils size={18} /></span><small>Plats publiés</small><strong>{totalDishes}</strong></div><div><span className="admin-stat-icon admin-stat-icon--gold"><CalendarDays size={18} /></span><small>Jours ouverts</small><strong>6</strong></div><div><span className="admin-stat-icon admin-stat-icon--green"><Check size={18} /></span><small>État du service</small><strong>Ouvert</strong></div></div><section className="admin-panel" id="menu-admin"><div className="admin-panel__head"><div><span className="admin-eyebrow">Gestion de la carte</span><h2>Menu du restaurant</h2></div><button className="admin-primary admin-primary--small" onClick={openNewDish}><Plus size={16} /> Nouveau plat</button></div><div className="admin-day-tabs">{adminDays.map((day) => <button className={selectedDay === day.key ? "is-active" : ""} key={day.key} onClick={() => { setSelectedDay(day.key); setDraft(null); }}><strong>{day.shortLabel}</strong><small>{day.label}</small><em>{menuState[day.key].length}</em></button>)}</div><div className="admin-dish-list">{menuState[selectedDay].map((dish) => <article className="admin-dish-row" key={`${selectedDay}-${dish.name}`}><img src={imageUrl(dish.image, 240) || "/logo-bely-mechoui.jpg"} alt="" loading="lazy" decoding="async" /><div><strong>{dish.name}</strong><small>{dish.category} · {formatPrice(dish.price)}</small><p>{dish.description}</p></div><div className="admin-row-actions"><button aria-label={`Modifier ${dish.name}`} onClick={() => openEditDish(dish)}><Save size={16} /></button><button aria-label={`Supprimer ${dish.name}`} onClick={() => deleteDish(dish)}><Trash2 size={16} /></button></div></article>)}</div>{draft && <div className="admin-editor"><div className="admin-editor__head"><div><span className="admin-eyebrow">Édition rapide</span><h3>{draft.name === "Nouveau plat" ? "Ajouter un plat" : "Modifier le plat"}</h3></div><button className="admin-close" onClick={() => setDraft(null)}><X size={18} /></button></div><div className="admin-form-grid"><label>Nom du plat<input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></label><label>Catégorie<select value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value })}>{categoriesState.map((category) => <option key={category}>{category}</option>)}</select></label><label>Jour<select value={selectedDay} onChange={(event) => { const nextDay = event.target.value as DayKey; setSelectedDay(nextDay); setDraft({ ...draft }); }}>{adminDays.map((day) => <option key={day.key} value={day.key}>{day.label}</option>)}</select></label><label>Prix (FCFA)<input type="number" min="0" value={draft.price} onChange={(event) => setDraft({ ...draft, price: Number(event.target.value) })} /></label><label className="admin-form-wide">Description<textarea value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} /></label><label className="admin-form-wide">URL de la photo<input value={draft.image} onChange={(event) => setDraft({ ...draft, image: event.target.value })} placeholder="https://..." /></label><label className="admin-upload"><ImagePlus size={16} /> Photo locale<input type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => setDraft({ ...draft, image: String(reader.result) }); reader.readAsDataURL(file); }} /></label></div><button className="admin-primary" onClick={saveDish} disabled={saving}><Save size={17} /> Enregistrer le plat</button></div>}</section><section className="admin-settings" id="settings-admin"><div className="admin-panel"><div className="admin-panel__head"><div><span className="admin-eyebrow">Configuration</span><h2>Horaires du restaurant</h2></div><Clock3 size={20} /></div><div className="admin-settings-grid"><label>Horaires d’ouverture<input value={hours.opening} onChange={(event) => setHours({ ...hours, opening: event.target.value })} /></label><label>Jours ouverts<input value={hours.days} onChange={(event) => setHours({ ...hours, days: event.target.value })} /></label></div><button className="admin-primary admin-primary--small" onClick={updateHours}><Save size={16} /> Enregistrer les horaires</button></div><AdminNotifications token={token} onResult={showNotice} /><div className="admin-panel"><div className="admin-panel__head"><div><span className="admin-eyebrow">Organisation</span><h2>Catégories</h2></div><Sparkles size={20} /></div><p className="admin-helper">Sépare les catégories par des virgules pour les réorganiser.</p><input className="admin-categories-input" value={categoryText} onChange={(event) => setCategoryText(event.target.value)} /><button className="admin-primary admin-primary--small" onClick={updateCategories}><Save size={16} /> Enregistrer les catégories</button></div><div className="admin-panel"><div className="admin-panel__head"><div><span className="admin-eyebrow">Sécurité</span><h2>Mot de passe</h2></div><ShieldCheck size={20} /></div><p className="admin-helper">6 caractères minimum. Le changement est immédiat et déconnecte les autres appareils.</p><div className="admin-settings-grid"><label>Nouveau mot de passe<input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} /></label><label>Confirmation<input type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} /></label></div><button className="admin-primary admin-primary--small" onClick={changePassword} disabled={saving}><Save size={16} /> Changer le mot de passe</button></div></section></section></div></main>;
+  return <main className="admin-shell"><header className="admin-header"><a className="admin-brand" href="/#accueil"><span><ChefHat size={19} /></span><strong>BELY <i>MECHOUI</i></strong></a><div className="admin-header__actions"><span className="admin-status"><span /> {source === "base" ? "Base connectée" : source === "chargement" ? "Connexion à la base…" : "Mode démo · non enregistré"}</span><button className="admin-logout" onClick={logout}><LogOut size={16} /> Déconnexion</button></div></header><div className="admin-layout"><aside className="admin-sidebar"><span className="admin-eyebrow">Administration</span><h1>Tableau de bord</h1><p>Gère le menu, les horaires et l’image de Bely Mechoui depuis un seul endroit.</p><div className="admin-side-links"><a className="is-active" href="#dashboard"><LayoutDashboard size={17} /> Vue générale</a><a href="#menu-admin"><UtensilsCrossed size={17} /> Menus</a><a href="#settings-admin"><Clock3 size={17} /> Horaires & catégories</a><a href="#notifications-admin"><Bell size={17} /> Notifications</a></div></aside><section className="admin-content" id="dashboard">{toast}<div className="admin-page-heading"><div><span className="admin-eyebrow">Vue générale</span><h2>Bonjour, Bely.</h2></div><span className="admin-date"><CalendarDays size={16} /> {new Intl.DateTimeFormat("fr-FR", { dateStyle: "long" }).format(new Date())}</span></div><div className="admin-stats"><div><span className="admin-stat-icon"><Utensils size={18} /></span><small>Plats publiés</small><strong>{totalDishes}</strong></div><div><span className="admin-stat-icon admin-stat-icon--gold"><CalendarDays size={18} /></span><small>Jours ouverts</small><strong>6</strong></div><div><span className="admin-stat-icon admin-stat-icon--green"><Check size={18} /></span><small>État du service</small><strong>Ouvert</strong></div></div><section className="admin-panel" id="menu-admin"><div className="admin-panel__head"><div><span className="admin-eyebrow">Gestion de la carte</span><h2>Menu du restaurant</h2></div><button className="admin-primary admin-primary--small" onClick={openNewDish}><Plus size={16} /> Nouveau plat</button></div><div className="admin-day-tabs">{adminDays.map((day) => <button className={selectedDay === day.key ? "is-active" : ""} key={day.key} onClick={() => { setSelectedDay(day.key); setDraft(null); }}><strong>{day.shortLabel}</strong><small>{day.label}</small><em>{menuState[day.key].length}</em></button>)}</div><div className="admin-dish-list">{menuState[selectedDay].map((dish) => <article className="admin-dish-row" key={`${selectedDay}-${dish.name}`}><img src={imageUrl(dish.image, 240) || "/logo-bely-mechoui.jpg"} alt="" loading="lazy" decoding="async" /><div><strong>{dish.name}</strong><small>{dish.category} · {formatPrice(dish.price)}</small><p>{dish.description}</p></div><div className="admin-row-actions"><button aria-label={`Modifier ${dish.name}`} onClick={() => openEditDish(dish)}><Save size={16} /></button><button aria-label={`Supprimer ${dish.name}`} onClick={() => deleteDish(dish)}><Trash2 size={16} /></button></div></article>)}</div>{draft && <div className="admin-editor"><div className="admin-editor__head"><div><span className="admin-eyebrow">Édition rapide</span><h3>{draft.name === "Nouveau plat" ? "Ajouter un plat" : "Modifier le plat"}</h3></div><button className="admin-close" onClick={() => setDraft(null)}><X size={18} /></button></div><div className="admin-form-grid"><label>Nom du plat<input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></label><label>Catégorie<select value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value })}>{categoriesState.map((category) => <option key={category}>{category}</option>)}</select></label><label>Jour<select value={selectedDay} onChange={(event) => { const nextDay = event.target.value as DayKey; setSelectedDay(nextDay); setDraft({ ...draft }); }}>{adminDays.map((day) => <option key={day.key} value={day.key}>{day.label}</option>)}</select></label><label>Prix (FCFA)<input type="number" min="0" value={draft.price} onChange={(event) => setDraft({ ...draft, price: Number(event.target.value) })} /></label><label className="admin-form-wide">Description<textarea value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} /></label><label className="admin-form-wide">URL de la photo<input value={draft.image} onChange={(event) => setDraft({ ...draft, image: event.target.value })} placeholder="https://..." /></label><label className="admin-upload"><ImagePlus size={16} /> Photo locale<input type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => setDraft({ ...draft, image: String(reader.result) }); reader.readAsDataURL(file); }} /></label></div><button className="admin-primary" onClick={saveDish} disabled={saving}><Save size={17} /> Enregistrer le plat</button></div>}</section><section className="admin-settings" id="settings-admin"><div className="admin-panel"><div className="admin-panel__head"><div><span className="admin-eyebrow">Configuration</span><h2>Horaires du restaurant</h2></div><Clock3 size={20} /></div><div className="admin-settings-grid"><label>Horaires d’ouverture<input value={hours.opening} onChange={(event) => setHours({ ...hours, opening: event.target.value })} /></label><label>Jours ouverts<input value={hours.days} onChange={(event) => setHours({ ...hours, days: event.target.value })} /></label></div><button className="admin-primary admin-primary--small" onClick={updateHours}><Save size={16} /> Enregistrer les horaires</button></div><AdminNotifications token={token} onResult={showNotice} /><div className="admin-panel"><div className="admin-panel__head"><div><span className="admin-eyebrow">Organisation</span><h2>Catégories</h2></div><Sparkles size={20} /></div><p className="admin-helper">Sépare les catégories par des virgules pour les réorganiser.</p><input className="admin-categories-input" value={categoryText} onChange={(event) => setCategoryText(event.target.value)} /><div className="admin-cat-photos">{categoriesState.map((category) => <label key={category} className="admin-cat-photo"><span className="admin-cat-photo__preview" style={{ backgroundImage: `url(${imagesState[category] ?? adminPhotos[category] ?? ""})` }} /><span className="admin-cat-photo__name">{category}</span><span className="admin-cat-photo__action"><ImagePlus size={13} /> Photo</span><input type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; if (file) void pickCategoryPhoto(category, file); event.target.value = ""; }} /></label>)}</div><button className="admin-primary admin-primary--small" onClick={updateCategories}><Save size={16} /> Enregistrer les catégories</button></div><div className="admin-panel"><div className="admin-panel__head"><div><span className="admin-eyebrow">Sécurité</span><h2>Mot de passe</h2></div><ShieldCheck size={20} /></div><p className="admin-helper">6 caractères minimum. Le changement est immédiat et déconnecte les autres appareils.</p><div className="admin-settings-grid"><label>Nouveau mot de passe<input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} /></label><label>Confirmation<input type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} /></label></div><button className="admin-primary admin-primary--small" onClick={changePassword} disabled={saving}><Save size={16} /> Changer le mot de passe</button></div></section></section></div></main>;
 }
 
 function App() {
@@ -497,14 +546,14 @@ function App() {
   const dayDishes = useMemo(() => menuState[activeDay], [activeDay, menuState]);
   const allDishes = useMemo(() => Array.from(new Map(Object.values(menuState).flat().map((dish) => [dish.name, dish])).values()), [menuState]);
 
-  /** Photo d'illustration de chaque catégorie : la première photo de plat trouvée. */
+  /** Photo de catégorie : celle choisie dans l'admin, sinon la première photo de plat trouvée. */
   const categoryPhotos = useMemo(() => {
-    const photos: Record<string, string> = {};
+    const photos: Record<string, string> = { ...(payload.images ?? {}) };
     for (const dish of allDishes) {
       if (!photos[dish.category] && dish.image) photos[dish.category] = imageUrl(dish.image, 520);
     }
     return photos;
-  }, [allDishes]);
+  }, [allDishes, payload.images]);
   const favoriteDishes = useMemo(() => favoriteNames.map((name) => allDishes.find((dish) => dish.name === name)).filter((dish): dish is Dish => Boolean(dish)), [allDishes, favoriteNames]);
   const filteredDishes = useMemo(() => {
     const needle = query.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");

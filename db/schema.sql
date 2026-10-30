@@ -9,9 +9,13 @@ create table if not exists bely_menu (
   menu jsonb not null,
   categories jsonb not null,
   hours jsonb not null,
+  images jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default now(),
   constraint bely_menu_single_row check (id = 1)
 );
+
+-- Bases créées avant l'ajout des photos de catégories.
+alter table bely_menu add column if not exists images jsonb not null default '{}'::jsonb;
 
 -- La ligne 1 est créée automatiquement au premier enregistrement depuis /#admin.
 

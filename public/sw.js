@@ -1,4 +1,4 @@
-const CACHE_NAME = "bely-mechoui-v4";
+const CACHE_NAME = "bely-mechoui-v5";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -108,8 +108,22 @@ self.addEventListener("push", (event) => {
   );
 });
 
+/** Ajoute `?push=<id>` pour que la page sache quelle annonce a été ouverte. */
+function withPushId(target, id) {
+  if (!id) return target;
+  try {
+    const url = new URL(target, self.location.origin);
+    url.searchParams.set("push", String(id));
+    return url.pathname + url.search + url.hash;
+  } catch {
+    return target;
+  }
+}
+
 self.addEventListener("notificationclick", (event) => {
-  const target = event.notification.data?.url || "/#accueil";
+  const base = event.notification.data?.url || "/#accueil";
+  const id = event.notification.data?.id;
+  const target = withPushId(base, id);
   event.notification.close();
 
   event.waitUntil(
@@ -124,7 +138,7 @@ self.addEventListener("notificationclick", (event) => {
       for (const client of windows) {
         if (client.url.startsWith(self.location.origin)) {
           await client.focus();
-          client.postMessage({ type: "bely-notification-click", url: target });
+          client.postMessage({ type: "bely-notification-click", url: target, id });
           return;
         }
       }
