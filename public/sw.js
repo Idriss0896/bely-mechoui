@@ -1,4 +1,4 @@
-const CACHE_NAME = "bely-mechoui-v3";
+const CACHE_NAME = "bely-mechoui-v4";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -32,6 +32,7 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith("/api/")) return;
 
   // Navigation : réseau d'abord, cache en secours (évite de figer une ancienne version).
   if (request.mode === "navigate") {
@@ -60,5 +61,93 @@ self.addEventListener("fetch", (event) => {
         .catch(() => cached);
       return cached || network;
     }),
+  );
+});
+
+/* ------------------------------------------------------------------ */
+/* Notifications push : fonctionne même quand l'application est fermée */
+/* ------------------------------------------------------------------ */
+
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    payload = { body: event.data ? event.data.text() : "" };
+  }
+
+  const title = payload.title || "Bely Mechoui";
+  const body = payload.body || "Une nouvelle annonce du restaurant.";
+  const url = payload.url || "/#accueil";
+  const tag = payload.tag || "bely-notification";
+
+  event.waitUntil(
+    (async () => {
+      await self.registration.showNotification(title, {
+        body,
+        tag,
+        renotify: true,
+        icon: "/icon-192.png",
+        badge: "/icon-192.png",
+        image: payload.image || undefined,
+        lang: "fr",
+        data: { url, id: payload.id ?? null },
+        vibrate: [90, 60, 90],
+      });
+
+      if (payload.id && "setAppBadge" in self.navigator) {
+        try {
+          const all = await self.clients.matchAll({ includeUncontrolled: true });
+          const count = Number(payload.count ?? 1);
+          if (all.length === 0) await self.navigator.setAppBadge(count);
+        } catch {
+          /* badge non supporté */
+        }
+      }
+    })(),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  const target = event.notification.data?.url || "/#accueil";
+  event.notification.close();
+
+  event.waitUntil(
+    (async () => {
+      try {
+        if ("clearAppBadge" in self.navigator) await self.navigator.clearAppBadge();
+      } catch {
+        /* badge non supporté */
+      }
+
+      const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const client of windows) {
+        if (client.url.startsWith(self.location.origin)) {
+          await client.focus();
+          client.postMessage({ type: "bely-notification-click", url: target });
+          return;
+        }
+      }
+
+      await self.clients.openWindow(target);
+    })(),
+  );
+});
+
+self.addEventListener("notificationclose", () => {
+  /* Rien à faire : le badge reste tant que la notification n'est pas ouverte. */
+});
+
+// Permet à la page de remettre le compteur à zéro une fois les nouvelles lues.
+self.addEventListener("message", (event) => {
+  if (event.data?.type !== "bely-badge-clear") return;
+  event.waitUntil(
+    (async () => {
+      try {
+        if ("clearAppBadge" in self.navigator) await self.navigator.clearAppBadge();
+      } catch {
+        /* badge non supporté */
+      }
+    })(),
   );
 });

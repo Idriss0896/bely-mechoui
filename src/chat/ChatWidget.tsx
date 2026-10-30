@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, ChefHat, Mic, Send, Volume2, VolumeX, X } from "lucide-react";
 import type { Dish } from "../data/menu";
 import { answer, buildOrderMessage, buildShareMessage, type CartLine, type ChatAction, type ChatAnswer } from "./knowledge";
@@ -23,14 +23,12 @@ type Message = {
 
 const PENDING_KEY = "bely-commande-en-attente";
 
+const SUGGESTIONS = ["La carte du jour", "Horaires", "Où êtes-vous ?", "Commander"];
+
 const WELCOME: Message = {
   id: 1,
   role: "bot",
   text: "Bonjour et bienvenue chez Bely Mechoui ! Je peux te donner les horaires, la carte, l'adresse, ou prendre ta commande.",
-  actions: [
-    { label: "La carte", kind: "menu" },
-    { label: "Horaires", kind: "menu" },
-  ],
 };
 
 export default function ChatWidget({ dishes, allDishes, status, hours, formatPrice, whatsappHref }: Props) {
@@ -113,6 +111,12 @@ export default function ChatWidget({ dishes, allDishes, status, hours, formatPri
       window.removeEventListener("keydown", onKey);
       window.clearTimeout(timer);
     };
+  }, [open]);
+
+  // L'assistant prend tout l'écran : on masque la barre de titre et la navigation.
+  useEffect(() => {
+    document.body.classList.toggle("chat-open", open);
+    return () => document.body.classList.remove("chat-open");
   }, [open]);
 
   useEffect(() => {
@@ -289,12 +293,12 @@ export default function ChatWidget({ dishes, allDishes, status, hours, formatPri
       </button>
 
       {open && (
-        <section className="chat-panel" id="bely-chat" role="dialog" aria-modal="false" aria-labelledby="chat-title">
+        <section className="chat-panel" id="bely-chat" role="dialog" aria-modal="true" aria-labelledby="chat-title">
           <header className="chat-head">
             <span className="chat-avatar"><ChefHat size={17} /></span>
             <div className="chat-identity">
               <strong id="chat-title">Assistant Bely</strong>
-              <small><i className={online ? "is-online" : ""} /> {online ? "En ligne · commande en direct" : "Hors ligne · commande possible"}</small>
+              <small><i className={online ? "is-online" : ""} /> {online ? (status.open ? `Ouvert · ${status.detail}` : "Fermé · laisse un message") : "Hors ligne · commande possible"}</small>
             </div>
             <button className="chat-voice" type="button" onClick={() => setVoice((value) => !value)} aria-pressed={voice} aria-label={voice ? "Couper la lecture vocale" : "Activer la lecture vocale"}>
               {voice ? <Volume2 size={17} /> : <VolumeX size={17} />}
@@ -303,6 +307,7 @@ export default function ChatWidget({ dishes, allDishes, status, hours, formatPri
           </header>
 
           <div className="chat-body" ref={listRef}>
+            <div className="chat-day">Aujourd'hui</div>
             {messages.map((message) => (
               <div className={`chat-msg chat-msg--${message.role}`} key={message.id}>
                 <p>{message.text}</p>
@@ -329,6 +334,14 @@ export default function ChatWidget({ dishes, allDishes, status, hours, formatPri
             ))}
             {typing && <div className="chat-msg chat-msg--bot chat-typing"><i /><i /><i /></div>}
           </div>
+
+          {messages.length <= 2 && (
+            <div className="chat-suggestions" aria-label="Suggestions">
+              {SUGGESTIONS.map((suggestion) => (
+                <button key={suggestion} type="button" className="chat-chip" onClick={() => send(suggestion)}>{suggestion}</button>
+              ))}
+            </div>
+          )}
 
           <form className="chat-form" onSubmit={(event) => { event.preventDefault(); send(input); }}>
             <button type="button" className={`chat-mic ${listening ? "is-listening" : ""}`} onClick={startListening} aria-label={listening ? "Arrêter l'écoute" : "Parler à l'assistant"} aria-pressed={listening}>

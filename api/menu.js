@@ -1,22 +1,10 @@
-import { neon } from "@neondatabase/serverless";
-import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
-
-const connectionString = process.env.DATABASE_URL;
-const sql = connectionString ? neon(connectionString) : null;
+import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { adminIsValid, safeEqual, sql } from "./_session.js";
 
 /** Durée d'une session d'administration. */
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 /** Longueur minimale acceptée pour un nouveau mot de passe. */
 const MIN_PASSWORD_LENGTH = 6;
-
-/** Comparaison à temps constant, sur des empreintes de taille fixe. */
-function digest(value) {
-  return createHash("sha256").update(String(value)).digest();
-}
-
-function safeEqual(a, b) {
-  return timingSafeEqual(digest(a), digest(b));
-}
 
 /** Empreinte scrypt salée, au format `scrypt:salt:hash` (base64). */
 function hashPassword(password) {
@@ -56,40 +44,14 @@ async function storedPassword() {
     const rows = await sql`select password_hash from bely_admin where id = 1`;
     return rows[0]?.password_hash ?? null;
   } catch {
-    // Table absente (base jamais migrée) : le mot de passe d'environnement s'applique.
     return null;
   }
-}
-
-/**
- * Clé de signature des sessions : l'empreinte en base si elle existe,
- * sinon ADMIN_PASSWORD. Changer le mot de passe invalide donc les anciennes sessions.
- */
-async function sessionSecret() {
-  return (await storedPassword()) ?? process.env.ADMIN_PASSWORD ?? "";
 }
 
 function issueToken(secret) {
   const expiresAt = Date.now() + SESSION_TTL_MS;
   const signature = createHmac("sha256", secret).update(String(expiresAt)).digest("base64url");
   return { token: `${expiresAt}.${signature}`, expiresAt };
-}
-
-function bearerToken(request) {
-  const header = request.headers.authorization ?? "";
-  return header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-}
-
-async function sessionIsValid(request) {
-  const token = bearerToken(request);
-  if (!token) return false;
-  const [rawExpiry, signature] = token.split(".");
-  const expiresAt = Number(rawExpiry);
-  if (!signature || !Number.isFinite(expiresAt) || expiresAt < Date.now()) return false;
-  const secret = await sessionSecret();
-  if (!secret) return false;
-  const expected = createHmac("sha256", secret).update(rawExpiry).digest("base64url");
-  return safeEqual(signature, expected);
 }
 
 /** La carte doit rester un objet de tableaux de plats nommés. */
@@ -151,7 +113,7 @@ export default async function handler(request, response) {
       const body = readBody(request);
 
       if (action === "password") {
-        if (!(await sessionIsValid(request))) {
+        if (!(await adminIsValid(request))) {
           return response.status(401).json({ error: "Session expirée, reconnecte-toi" });
         }
         const next = body.newPassword;
@@ -172,15 +134,18 @@ export default async function handler(request, response) {
       }
 
       const stored = await storedPassword();
-      const accepted = stored ? verifyPassword(body.password, stored) : process.env.ADMIN_PASSWORD && safeEqual(body.password ?? "", process.env.ADMIN_PASSWORD);
+      const expected = process.env.ADMIN_PASSWORD ?? "";
+      const accepted = stored
+        ? verifyPassword(body.password, stored)
+        : Boolean(expected) && safeEqual(body.password ?? "", expected);
       if (!accepted) {
         return response.status(401).json({ error: "Mot de passe incorrect" });
       }
-      return response.status(200).json({ ok: true, ...issueToken(stored ?? process.env.ADMIN_PASSWORD ?? "") });
+      return response.status(200).json({ ok: true, ...issueToken(stored ?? expected) });
     }
 
     if (request.method === "PUT") {
-      if (!(await sessionIsValid(request))) {
+      if (!(await adminIsValid(request))) {
         return response.status(401).json({ error: "Session expirée, reconnecte-toi" });
       }
 
