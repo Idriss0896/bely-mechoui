@@ -249,9 +249,9 @@ function getTodayMenuDay(): DayKey {
 
 function DishCard({ dish, onOpen, onToggleFavorite, isFavorite, compact = false }: { dish: Dish; onOpen: (dish: Dish) => void; onToggleFavorite: (dish: Dish) => void; isFavorite: boolean; compact?: boolean }) {
   return (
-    <button className={`dish-card ${compact ? "dish-card--compact" : ""} ${dish.unavailable ? "is-unavailable" : ""}`} onClick={() => onOpen(dish)}>
+    <button className={`dish-card ${compact ? "dish-card--compact" : ""} ${dish.unavailable ? "is-unavailable" : ""}`} onClick={() => onOpen(dish)} aria-haspopup="dialog">
       <span className="dish-card__image"><img src={dish.image} alt="" loading="lazy" /><span className="dish-card__tag">{dish.category}</span><span className={`dish-card__heart ${isFavorite ? "is-favorite" : ""}`} role="button" tabIndex={0} aria-label={isFavorite ? `Retirer ${dish.name} des favoris` : `Ajouter ${dish.name} aux favoris`} aria-pressed={isFavorite} onClick={(event) => { event.stopPropagation(); onToggleFavorite(dish); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); onToggleFavorite(dish); } }}><Heart size={15} fill={isFavorite ? "currentColor" : "none"} /></span></span>
-      <span className="dish-card__info"><span className="dish-card__name">{dish.name}</span><span className="dish-card__desc">{dish.description}</span><span className="dish-card__bottom"><strong>{formatPrice(dish.price)}</strong><span className="dish-card__rating">★ 4.9</span></span></span>
+      <span className="dish-card__info"><span className="dish-card__name">{dish.name}</span><span className="dish-card__desc">{dish.description}</span><span className="dish-card__bottom"><strong>{formatPrice(dish.price)}</strong><span className="dish-card__cta">Voir<ChevronRight size={13} aria-hidden="true" /></span></span></span>
       {dish.unavailable && <span className="dish-card__unavailable">Indisponible aujourd'hui</span>}
     </button>
   );
@@ -282,8 +282,9 @@ function DishDetails({ dish, onClose }: { dish: Dish; onClose: () => void }) {
   return (
     <div className="detail-backdrop" role="presentation" onClick={onClose}>
       <section className="detail-sheet" role="dialog" aria-modal="true" aria-labelledby="dish-detail-title" onClick={(event) => event.stopPropagation()}>
-        <div className="detail-sheet__image"><img src={dish.image} alt={dish.name} /><button ref={closeRef} className="icon-button icon-button--light" aria-label="Fermer" onClick={onClose}><X size={19} /></button><button className="icon-button icon-button--light detail-sheet__share" aria-label={`Partager ${dish.name}`} onClick={share}>{shared ? <Check size={17} /> : <Share2 size={17} />}</button></div>
-        <div className="detail-sheet__body"><span className="eyebrow">{dish.category}</span><h2 id="dish-detail-title">{dish.name}</h2><p>{dish.description}</p><div className="detail-sheet__facts"><span><Clock3 size={16} /> Préparé avec soin</span><span><Sparkles size={16} /> Signature maison</span></div><div className="detail-sheet__footer"><strong>{formatPrice(dish.price)}</strong><span>Au menu aujourd'hui</span></div>
+        <span className="detail-sheet__handle" aria-hidden="true" />
+        <div className="detail-sheet__image"><img src={dish.image} alt={dish.name} /><span className="detail-sheet__badge">{dish.category}</span><button ref={closeRef} className="icon-button icon-button--light detail-sheet__close" aria-label="Fermer" onClick={onClose}><X size={19} /></button><button className="icon-button icon-button--light detail-sheet__share" aria-label={`Partager ${dish.name}`} onClick={share}>{shared ? <Check size={17} /> : <Share2 size={17} />}</button></div>
+        <div className="detail-sheet__body"><span className="eyebrow"><Sparkles size={12} /> Fait maison</span><h2 id="dish-detail-title">{dish.name}</h2><p>{dish.description}</p><div className="detail-sheet__facts"><span><Clock3 size={16} /> Préparé avec soin</span><span><Sparkles size={16} /> Signature maison</span></div><div className="detail-sheet__footer"><strong>{formatPrice(dish.price)}</strong><span>Au menu aujourd'hui</span></div>
           <div className="detail-sheet__actions">
             {CONTACT.whatsapp ? <a className="detail-cta detail-cta--primary" href={whatsappLink(`Bonjour Bely Mechoui, je souhaite commander : ${dish.name}.`)} target="_blank" rel="noreferrer"><Utensils size={16} /> Commander ce plat</a> : null}
             {CONTACT.phone ? <a className="detail-cta" href={`tel:${CONTACT.phone.replace(/\s+/g, "")}`}><Phone size={16} /> Appeler</a> : null}
