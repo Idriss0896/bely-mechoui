@@ -10,12 +10,13 @@ type SentNotification = {
 
 type Props = {
   token: string;
+  onResult?: (message: string, ok: boolean) => void;
 };
 
 const dateLabel = (iso: string) =>
   new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 
-export default function AdminNotifications({ token }: Props) {
+export default function AdminNotifications({ token, onResult }: Props) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
@@ -52,7 +53,9 @@ export default function AdminNotifications({ token }: Props) {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        setError(data?.error ?? "Envoi impossible");
+        const message = data?.error ?? "Envoi impossible";
+        setError(message);
+        onResult?.(message, false);
         return;
       }
 
@@ -60,12 +63,15 @@ export default function AdminNotifications({ token }: Props) {
       const parts = ["Notification publiée"];
       if (push.configured === false) parts.push("push non configuré (clés VAPID absentes)");
       else parts.push(`${push.sent ?? 0} appareil(s) prévenu(s)`);
-      setFeedback(parts.join(" · "));
+      const message = parts.join(" · ");
+      setFeedback(message);
+      onResult?.(message, true);
       setTitle("");
       setBody("");
       await load();
     } catch {
       setError("Réseau indisponible");
+      onResult?.("Réseau indisponible : notification non envoyée", false);
     } finally {
       setSending(false);
     }
