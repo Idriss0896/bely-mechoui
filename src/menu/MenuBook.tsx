@@ -10,6 +10,8 @@ type Props = {
   menu: MenuState;
   days: Array<{ key: DayKey; label: string; shortLabel: string }>;
   initialDay: DayKey;
+  /** Catégorie choisie avant l'ouverture (clic sur une carte catégorie). */
+  initialCategory?: string | null;
   hours: { opening: string; days: string };
   status: { open: boolean; label: string; detail: string };
   formatPrice: (value: number) => string;
@@ -46,11 +48,12 @@ function useIsPhone() {
   return phone;
 }
 
-export default function MenuBook({ menu, days, initialDay, hours, status, formatPrice, whatsappHref, onClose }: Props) {
+export default function MenuBook({ menu, days, initialDay, initialCategory = null, hours, status, formatPrice, whatsappHref, onClose }: Props) {
   const phone = useIsPhone();
   const [opened, setOpened] = useState(false);
   const [settled, setSettled] = useState(false);
   const [day, setDay] = useState<DayKey>(initialDay);
+  const [category, setCategory] = useState<string | null>(initialCategory);
   const [selected, setSelected] = useState<Dish | null>(null);
   const [sheetDish, setSheetDish] = useState<Dish | null>(null);
   const [sheetQty, setSheetQty] = useState(1);
@@ -62,6 +65,7 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
 
   const dayIndex = days.findIndex((item) => item.key === day);
   const dishes = menu[day] ?? [];
+  const visibleDishes = useMemo(() => (category ? dishes.filter((dish) => dish.category === category) : dishes), [dishes, category]);
   const dayLabel = days[dayIndex]?.label ?? "";
   const cartCount = cart.reduce((sum, line) => sum + line.qty, 0);
 
@@ -170,7 +174,7 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
 
   const groups = useMemo(() => {
     const map = new Map<string, Dish[]>();
-    for (const dish of dishes) {
+    for (const dish of visibleDishes) {
       const list = map.get(dish.category) ?? [];
       list.push(dish);
       map.set(dish.category, list);
@@ -185,7 +189,7 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
         return rank(a.category) - rank(b.category) || a.category.localeCompare(b.category);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dishes]);
+  }, [visibleDishes]);
 
   /** Les boissons et accompagnements servis tous les jours, même s'ils ne sont pas listés ce jour-là. */
   const staples = useMemo(() => {
@@ -197,9 +201,10 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
       (dish) =>
         (dish.category === "Boissons" || dish.category === "Accompagnement") &&
         !dish.unavailable &&
+        (!category || dish.category === category) &&
         !dishes.some((item) => item.name === dish.name),
     );
-  }, [menu, dishes]);
+  }, [menu, dishes, category]);
 
   type Row = { kind: "head"; key: string; label: string; count: number; icon: ReactNode; staples?: boolean } | { kind: "dish"; dish: Dish; single: boolean };
 
@@ -267,6 +272,13 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
               ))}
             </nav>
 
+            {category && (
+              <div className="book__filter">
+                <span>Filtre · {category}</span>
+                <button type="button" onClick={() => setCategory(null)}>Toute la carte <X size={12} /></button>
+              </div>
+            )}
+
             <ul className={`book__dishes ${turning ? "is-turning" : ""}`} key={day}>
               {rows.map((row, index) => {
                 if (row.kind === "head") {
@@ -305,7 +317,7 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
                   </li>
                 );
               })}
-              {dishes.length === 0 && staples.length === 0 && <li className="book__empty">La carte de ce jour arrive bientôt.</li>}
+              {visibleDishes.length === 0 && staples.length === 0 && <li className="book__empty">{category ? `Aucun plat « ${category} » aujourd'hui.` : "La carte de ce jour arrive bientôt."}</li>}
             </ul>
 
             <div className="book__signature" aria-hidden="true">
