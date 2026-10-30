@@ -9,36 +9,55 @@ const targetUrl = () => {
   return `${window.location.origin}/carte`;
 };
 
-/** Deux QR cohabitent (en-tête + barre fixe) : une seule génération partagée. */
-let cachedCode: Promise<string> | null = null;
+type Matrix = { size: number; path: string };
 
-function qrCode(url: string) {
-  cachedCode ??= QRCode.toDataURL(url, {
-    margin: 1,
-    width: 420,
-    errorCorrectionLevel: "H",
-    color: { dark: "#211b18", light: "#ffffff" },
-  });
-  return cachedCode;
+/**
+ * Matrice QR calculée de façon synchrone (aucune image à charger) :
+ * le code s'affiche immédiatement, et reste net à toutes les tailles.
+ */
+function buildMatrix(url: string): Matrix {
+  const qr = QRCode.create(url, { errorCorrectionLevel: "H" });
+  const size = qr.modules.size;
+  const data = qr.modules.data;
+  const chunks: string[] = [];
+  for (let row = 0; row < size; row += 1) {
+    for (let column = 0; column < size; column += 1) {
+      if (data[row * size + column]) chunks.push(`M${column} ${row}h1v1h-1z`);
+    }
+  }
+  return { size, path: chunks.join("") };
+}
+
+/** Deux QR cohabitent (en-tête + barre fixe) : une seule matrice partagée. */
+let cached: { url: string; matrix: Matrix } | null = null;
+
+function getMatrix(url: string) {
+  if (!cached || cached.url !== url) cached = { url, matrix: buildMatrix(url) };
+  return cached.matrix;
+}
+
+function QrSvg({ matrix, className }: { matrix: Matrix; className?: string }) {
+  const quiet = 2;
+  return (
+    <svg
+      className={className}
+      viewBox={`${-quiet} ${-quiet} ${matrix.size + quiet * 2} ${matrix.size + quiet * 2}`}
+      shapeRendering="crispEdges"
+      role="img"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <rect x={-quiet} y={-quiet} width={matrix.size + quiet * 2} height={matrix.size + quiet * 2} fill="#ffffff" />
+      <path d={matrix.path} fill="#211b18" />
+    </svg>
+  );
 }
 
 export default function QrBadge() {
-  const [code, setCode] = useState("");
   const [open, setOpen] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
   const url = useMemo(targetUrl, []);
-
-  useEffect(() => {
-    let alive = true;
-    qrCode(url)
-      .then((data) => {
-        if (alive) setCode(data);
-      })
-      .catch(() => undefined);
-    return () => {
-      alive = false;
-    };
-  }, [url]);
+  const matrix = useMemo(() => getMatrix(url), [url]);
 
   useEffect(() => {
     if (!open) return;
@@ -63,7 +82,7 @@ export default function QrBadge() {
         title="Scanne pour ouvrir la carte"
       >
         <span className="qr__frame">
-          {code ? <img className="qr__img" src={code} alt="" /> : <span className="qr__placeholder" aria-hidden="true" />}
+          <QrSvg matrix={matrix} className="qr__img" />
           <span className="qr__logo" aria-hidden="true"><ChefHat size={11} /></span>
         </span>
         <span className="qr__glow" aria-hidden="true" />
@@ -81,7 +100,7 @@ export default function QrBadge() {
             <p>Pointe l'appareil photo de ton téléphone : la carte du jour s'ouvre en livre, tu choisis ton plat et tu commandes.</p>
 
             <div className="qr-modal__code">
-              {code && <img src={code} alt="QR code vers la carte du restaurant" width={420} height={420} />}
+              <QrSvg matrix={matrix} className="qr-modal__svg" />
               <span className="qr-modal__logo" aria-hidden="true"><ChefHat size={20} /></span>
             </div>
 

@@ -1896,3 +1896,22 @@ body.book-open .bottom-nav { opacity: 0 !important; pointer-events: none; visibi
 @media (max-width: 860px) {
   .topbar { width: calc(100% - 20px); }
 }
+/* Bandeau de sécurité sous la barre d'état iOS : surface plate et sombre,
+   pour que le verre du système ne prélève jamais de contenu clair. */
+.status-guard {
+  background: #140f0d;
+  height: env(safe-area-inset-top, 0px);
+  inset: 0 0 auto;
+  pointer-events: none;
+  position: fixed;
+  z-index: 55;
+}
+html { background: #140f0d; }
+
+/* Le QR en SVG s'affiche instantanément et reste net */
+.qr__img { border-radius: 6px; display: block; height: 100%; width: 100%; }
+.qr-modal__svg { border-radius: 8px; display: block; height: auto; width: 100%; }
+
+@media (max-width: 860px) {
+  .app-header { padding-top: calc(env(safe-area-inset-top, 0px) + 26px); }
+}
