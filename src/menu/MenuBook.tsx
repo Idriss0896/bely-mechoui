@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, Clock3, Minus, Plus, ShoppingBag, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Check, ChefHat, ChevronLeft, ChevronRight, Clock3, CookingPot, CupSoda, Flame, Minus, Plus, Salad, Sandwich, ShoppingBag, Sparkles, X } from "lucide-react";
 import type { Dish, DayKey } from "../data/menu";
 import { buildOrderMessage, type CartLine } from "../chat/knowledge";
 
@@ -158,6 +158,71 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
 
   const others = selected ? dishes.filter((dish) => dish.name !== selected.name) : [];
 
+  /** Regroupement par catégorie, dans l'ordre d'un vrai menu. */
+  const GROUPS: Array<{ category: string; label: string; icon: ReactNode }> = [
+    { category: "Grillades", label: "Grillades", icon: <Flame size={12} /> },
+    { category: "Plats", label: "Plats", icon: <CookingPot size={12} /> },
+    { category: "Fast-food", label: "Fast-food", icon: <Sandwich size={12} /> },
+    { category: "Accompagnement", label: "Accompagnements", icon: <Salad size={12} /> },
+    { category: "Boissons", label: "Boissons", icon: <CupSoda size={12} /> },
+  ];
+
+  const groups = useMemo(() => {
+    const map = new Map<string, Dish[]>();
+    for (const dish of dishes) {
+      const list = map.get(dish.category) ?? [];
+      list.push(dish);
+      map.set(dish.category, list);
+    }
+    return [...map.entries()]
+      .map(([category, items]) => ({ category, items }))
+      .sort((a, b) => {
+        const rank = (name: string) => {
+          const index = GROUPS.findIndex((group) => group.category === name);
+          return index < 0 ? 99 : index;
+        };
+        return rank(a.category) - rank(b.category) || a.category.localeCompare(b.category);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dishes]);
+
+  /** Les boissons et accompagnements servis tous les jours, même s'ils ne sont pas listés ce jour-là. */
+  const staples = useMemo(() => {
+    const seen = new Map<string, Dish>();
+    Object.values(menu).flat().forEach((dish) => {
+      if (!seen.has(dish.name)) seen.set(dish.name, dish);
+    });
+    return [...seen.values()].filter(
+      (dish) =>
+        (dish.category === "Boissons" || dish.category === "Accompagnement") &&
+        !dish.unavailable &&
+        !dishes.some((item) => item.name === dish.name),
+    );
+  }, [menu, dishes]);
+
+  type Row = { kind: "head"; key: string; label: string; count: number; icon: ReactNode; staples?: boolean } | { kind: "dish"; dish: Dish };
+
+  const rows = useMemo<Row[]>(() => {
+    const list: Row[] = [];
+    for (const group of groups) {
+      const meta = GROUPS.find((item) => item.category === group.category);
+      list.push({
+        kind: "head",
+        key: group.category,
+        label: meta?.label ?? group.category,
+        count: group.items.length,
+        icon: meta?.icon ?? <ChefHat size={12} />,
+      });
+      for (const dish of group.items) list.push({ kind: "dish", dish });
+    }
+    if (staples.length) {
+      list.push({ kind: "head", key: "staples", label: "Toujours au menu", count: staples.length, icon: <Sparkles size={12} />, staples: true });
+      for (const dish of staples) list.push({ kind: "dish", dish });
+    }
+    return list;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groups, staples]);
+
   return (
     <div
       className="book-overlay"
@@ -202,10 +267,21 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
             </nav>
 
             <ul className={`book__dishes ${turning ? "is-turning" : ""}`} key={day}>
-              {dishes.map((dish, index) => {
+              {rows.map((row, index) => {
+                if (row.kind === "head") {
+                  return (
+                    <li key={`head-${row.key}`} className={`book__group-head ${row.staples ? "is-staples" : ""}`}>
+                      <span className="book__group-icon">{row.icon}</span>
+                      <span>{row.label}</span>
+                      <em>{row.count}</em>
+                      <i aria-hidden="true" />
+                    </li>
+                  );
+                }
+                const dish = row.dish;
                 const inCart = cart.find((line) => line.name === dish.name);
                 return (
-                  <li key={dish.name} style={{ animationDelay: `${index * 55}ms` }}>
+                  <li key={dish.name} style={{ animationDelay: `${Math.min(index, 14) * 35}ms` }}>
                     <button
                       type="button"
                       className={`book-dish ${selected?.name === dish.name ? "is-selected" : ""} ${dish.unavailable ? "is-unavailable" : ""}`}
@@ -228,7 +304,7 @@ export default function MenuBook({ menu, days, initialDay, hours, status, format
                   </li>
                 );
               })}
-              {dishes.length === 0 && <li className="book__empty">La carte de ce jour arrive bientôt.</li>}
+              {dishes.length === 0 && staples.length === 0 && <li className="book__empty">La carte de ce jour arrive bientôt.</li>}
             </ul>
 
             <div className="book__signature" aria-hidden="true">
