@@ -42,16 +42,35 @@ const listeners = new Set<() => void>();
 let inflight: Promise<void> | null = null;
 let lastFetchAt = 0;
 
-async function loadNotifications() {
+/** Dernière annonce lue, partagée entre les deux exemplaires de la cloche. */
+let seenStore: number | null = null;
+function readSeen() {
+  if (seenStore === null) seenStore = readLastSeen();
+  return seenStore;
+}
+function writeSeen(value: number) {
+  seenStore = Number(value);
+  try {
+    window.localStorage.setItem(LAST_SEEN_KEY, String(value));
+  } catch {
+    /* stockage indisponible */
+  }
+  listeners.forEach((listener) => listener());
+}
+
+async function loadNotifications(force = false) {
   if (inflight) return inflight;
-  if (storeReady && Date.now() - lastFetchAt < 20_000) return;
+  if (!force && storeReady && Date.now() - lastFetchAt < 20_000) return;
   lastFetchAt = Date.now();
   inflight = (async () => {
     try {
       const response = await fetch("/api/notifications", { headers: { Accept: "application/json" } });
       if (response.ok) {
         const data = await response.json();
-        if (Array.isArray(data?.notifications)) notifStore = data.notifications as BelyNotification[];
+        if (Array.isArray(data?.notifications)) {
+          // Les identifiants arrivent en texte (bigserial) : on les normalise en nombres.
+          notifStore = (data.notifications as BelyNotification[]).map((item) => ({ ...item, id: Number(item.id) }));
+        }
       }
     } catch {
       /* hors ligne : on garde la dernière liste connue */
@@ -62,6 +81,20 @@ async function loadNotifications() {
     }
   })();
   return inflight;
+}
+
+/** Vérifie toutes les quelques secondes s'il y a une nouvelle annonce (réponse minuscule). */
+async function pollLatest() {
+  if (document.visibilityState === "hidden") return;
+  try {
+    const response = await fetch("/api/notifications?meta=1", { headers: { Accept: "application/json" } });
+    if (!response.ok) return;
+    const data = await response.json();
+    const latest = data?.latest == null ? null : Number(data.latest);
+    if (latest && latest !== (notifStore[0]?.id ?? 0)) await loadNotifications(true);
+  } catch {
+    /* réseau momentanément indisponible */
+  }
 }
 
 /** Petit carillon quand une nouvelle annonce arrive pendant la consultation. */
@@ -92,12 +125,9 @@ function playChime() {
 
 export function useNotifications() {
   const [, bump] = useReducer((value: number) => value + 1, 0);
-  const [lastSeen, setLastSeen] = useState(readLastSeen);
+  const lastSeen = readSeen();
   const [pushState, setPushState] = useState<PushState>(() => (supportsPush() ? "idle" : "unsupported"));
   const [pushMessage, setPushMessage] = useState("");
-  const seenRef = useRef(lastSeen);
-
-  seenRef.current = lastSeen;
 
   const items = notifStore;
   const ready = storeReady;
@@ -108,9 +138,12 @@ export function useNotifications() {
     listeners.add(listener);
     void loadNotifications();
     const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") void loadNotifications();
-    }, 60_000);
-    const onFocus = () => void loadNotifications();
+      if (document.visibilityState === "visible") void pollLatest();
+    }, 4_000);
+    const onFocus = () => {
+      void loadNotifications(true);
+      void pollLatest();
+    };
     window.addEventListener("focus", onFocus);
     window.addEventListener("online", onFocus);
     return () => {
@@ -131,8 +164,7 @@ export function useNotifications() {
   const markAllRead = useCallback(() => {
     const latest = items.length ? items[0].id : 0;
     if (!latest) return;
-    window.localStorage.setItem(LAST_SEEN_KEY, String(latest));
-    setLastSeen(latest);
+    writeSeen(latest);
     if ("clearAppBadge" in navigator) void navigator.clearAppBadge?.();
     navigator.serviceWorker?.controller?.postMessage({ type: "bely-badge-clear" });
   }, [items]);
@@ -141,10 +173,7 @@ export function useNotifications() {
   useEffect(() => {
     const pushed = Number(new URLSearchParams(window.location.search).get("push"));
     if (!Number.isFinite(pushed) || pushed <= 0) return;
-    if (pushed > readLastSeen()) {
-      window.localStorage.setItem(LAST_SEEN_KEY, String(pushed));
-      setLastSeen(pushed);
-    }
+    if (pushed > readSeen()) writeSeen(pushed);
     const params = new URLSearchParams(window.location.search);
     params.delete("push");
     const query = params.toString();

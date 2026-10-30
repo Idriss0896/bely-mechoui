@@ -37,6 +37,12 @@ export default function NotificationCenter({ open, onOpenChange, onBeforeOpen }:
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onOpenChange]);
 
+  // Panneau ouvert : tout ce qui arrive est lu immédiatement, même si la liste
+  // est arrivée après l'ouverture ou si une annonce tombe entre-temps.
+  useEffect(() => {
+    if (open && items.length) markAllRead();
+  }, [open, items, markAllRead]);
+
   const toggle = () => {
     const next = !open;
     if (next) {

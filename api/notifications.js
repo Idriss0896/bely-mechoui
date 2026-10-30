@@ -74,6 +74,12 @@ export default async function handler(request, response) {
 
   try {
     if (request.method === "GET") {
+      // Sondage léger : uniquement le dernier identifiant, pour un temps réel à faible coût.
+      if (new URL(request.url, "http://localhost").searchParams.get("meta")) {
+        const [latest] = await sql`select id from bely_notifications order by id desc limit 1`;
+        return response.status(200).json({ latest: latest?.id == null ? null : Number(latest.id) });
+      }
+
       const rows = await sql`
         select id, title, body, created_at
         from bely_notifications
