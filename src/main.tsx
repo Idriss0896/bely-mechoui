@@ -605,7 +605,7 @@ function App() {
           {quickActions}
         </div>
         <div className="app-header__copy"><span className="eyebrow eyebrow--light"><ChefHat size={13} /> LE GOÛT DU FAIT MAISON</span><h1>La cuisine<br /><i>qui rassemble.</i></h1><p>Des plats généreux, préparés avec le feu et le cœur.</p><a className="hero-cta" href="#menu" onClick={(event) => { event.preventDefault(); setBookOpen(true); }}><span>Découvrir la carte</span><ChevronRight size={16} /></a><div className={`hero-hours ${status.open ? "is-open" : "is-closed"}`}><span className="hero-hours__door" aria-hidden="true" key={status.open ? "ouverte" : "fermee"}>{status.open ? <DoorOpen size={18} strokeWidth={1.9} /> : <DoorClosed size={18} strokeWidth={1.9} />}</span><span className="hero-hours__body"><strong>{status.label}</strong><span className="hero-hours__detail">{status.detail}</span></span></div></div>
-        <div className="hero-dish"><img src={imageUrl(featuredDish.image, 720)} srcSet={imageSet(featuredDish.image, [480, 720, 960]) || undefined} sizes="(max-width: 720px) 62vw, 340px" alt="Méchoui de mouton" fetchPriority="high" decoding="async" /><span className="hero-dish__glow" /></div>
+        <div className="hero-dish"><img src={imageUrl(featuredDish.image, 720)} srcSet={imageSet(featuredDish.image, [360, 540, 720]) || undefined} sizes="(max-width: 720px) 62vw, 340px" alt="Méchoui de mouton" fetchPriority="high" decoding="async" /><span className="hero-dish__glow" /></div>
         <div className="header-motion-note" aria-hidden="true"><span className="header-motion-note__icon"><Flame size={14} /></span><span><strong>Chaque jour</strong><small>fait maison</small></span><i /><i /><i /></div>
       </header>
 
