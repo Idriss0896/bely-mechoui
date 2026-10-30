@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
 export type BelyNotification = {
   id: number;
@@ -10,10 +10,6 @@ export type BelyNotification = {
 export type PushState = "unsupported" | "idle" | "asking" | "granted" | "denied" | "error";
 
 const LAST_SEEN_KEY = "bely-notifications-seen";
-
-/** Deux exemplaires de la cloche existent (barre haute + en-tête) : on partage le dernier appel. */
-let lastFetchAt = 0;
-let inflight: Promise<void> | null = null;
 
 const readLastSeen = () => {
   if (typeof window === "undefined") return 0;
@@ -37,51 +33,65 @@ const supportsPush = () =>
   "PushManager" in window &&
   "Notification" in window;
 
+/* La cloche existe en deux exemplaires (barre haute + en-tête) : la liste et
+   l'état de chargement sont partagés par module, sinon chaque exemplaire
+   interrogeait l'API dans son coin et l'un restait vide. */
+let notifStore: BelyNotification[] = [];
+let storeReady = false;
+const listeners = new Set<() => void>();
+let inflight: Promise<void> | null = null;
+let lastFetchAt = 0;
+
+async function loadNotifications() {
+  if (inflight) return inflight;
+  if (storeReady && Date.now() - lastFetchAt < 20_000) return;
+  lastFetchAt = Date.now();
+  inflight = (async () => {
+    try {
+      const response = await fetch("/api/notifications", { headers: { Accept: "application/json" } });
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data?.notifications)) notifStore = data.notifications as BelyNotification[];
+      }
+    } catch {
+      /* hors ligne : on garde la dernière liste connue */
+    } finally {
+      storeReady = true;
+      inflight = null;
+      listeners.forEach((listener) => listener());
+    }
+  })();
+  return inflight;
+}
+
 export function useNotifications() {
-  const [items, setItems] = useState<BelyNotification[]>([]);
+  const [, bump] = useReducer((value: number) => value + 1, 0);
   const [lastSeen, setLastSeen] = useState(readLastSeen);
   const [pushState, setPushState] = useState<PushState>(() => (supportsPush() ? "idle" : "unsupported"));
   const [pushMessage, setPushMessage] = useState("");
-  const [ready, setReady] = useState(false);
   const seenRef = useRef(lastSeen);
 
   seenRef.current = lastSeen;
 
+  const items = notifStore;
+  const ready = storeReady;
   const unread = items.filter((item) => item.id > lastSeen).length;
 
-  const refresh = useCallback(async () => {
-    if (inflight) return inflight;
-    if (Date.now() - lastFetchAt < 15_000) return;
-    lastFetchAt = Date.now();
-    inflight = (async () => {
-      try {
-        const response = await fetch("/api/notifications", { headers: { Accept: "application/json" } });
-        if (!response.ok) return;
-        const data = await response.json();
-        if (Array.isArray(data?.notifications)) setItems(data.notifications as BelyNotification[]);
-        setReady(true);
-      } catch {
-        /* hors ligne : on garde la dernière liste connue */
-        setReady(true);
-      } finally {
-        inflight = null;
-      }
-    })();
-    return inflight;
-  }, []);
-
   useEffect(() => {
-    void refresh();
-    const timer = window.setInterval(refresh, 60_000);
-    const onFocus = () => void refresh();
+    const listener = () => bump();
+    listeners.add(listener);
+    void loadNotifications();
+    const timer = window.setInterval(loadNotifications, 60_000);
+    const onFocus = () => void loadNotifications();
     window.addEventListener("focus", onFocus);
     window.addEventListener("online", onFocus);
     return () => {
+      listeners.delete(listener);
       window.clearInterval(timer);
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("online", onFocus);
     };
-  }, [refresh]);
+  }, []);
 
   // Badge sur l'icône de l'application (Chrome / Edge / Android).
   useEffect(() => {
