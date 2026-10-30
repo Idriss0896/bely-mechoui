@@ -7,6 +7,7 @@ import ChatWidget from "./chat/ChatWidget";
 import ShareRow from "./share/ShareRow";
 import NotificationCenter from "./notifications/NotificationCenter";
 import AdminNotifications from "./admin/AdminNotifications";
+import MenuBook from "./menu/MenuBook";
 import "./styles.css";
 
 const defaultCategories = ["Grillades", "Boissons", "Plats", "Fast-food", "Accompagnement"];
@@ -454,6 +455,7 @@ function App() {
   const [query, setQuery] = useState("");
   const [sortMode, setSortMode] = useState<"default" | "price-asc" | "price-desc">("default");
   const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
+  const [bookOpen, setBookOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [favoritesOpen, setFavoritesOpen] = useState(false);
   const [favoriteNames, setFavoriteNames] = useState<string[]>([]);
@@ -561,7 +563,7 @@ function App() {
         </div>
         <div className="header-orbit header-orbit--one" /><div className="header-orbit header-orbit--two" />
         <div className="app-header__top"><Brand />{quickActions}</div>
-        <div className="app-header__copy"><span className="eyebrow eyebrow--light"><ChefHat size={13} /> LE GOÛT DU FAIT MAISON</span><h1>La cuisine<br /><i>qui rassemble.</i></h1><p>Des plats généreux, préparés avec le feu et le cœur.</p><a className="hero-cta" href="#menu"><span>Découvrir la carte</span><ChevronRight size={16} /></a><div className={`hero-hours ${status.open ? "is-open" : "is-closed"}`}><span className="hero-hours__door" aria-hidden="true" key={status.open ? "ouverte" : "fermee"}>{status.open ? <DoorOpen size={18} strokeWidth={1.9} /> : <DoorClosed size={18} strokeWidth={1.9} />}</span><span className="hero-hours__body"><strong>{status.label}</strong><span className="hero-hours__detail">{status.detail}</span></span></div></div>
+        <div className="app-header__copy"><span className="eyebrow eyebrow--light"><ChefHat size={13} /> LE GOÛT DU FAIT MAISON</span><h1>La cuisine<br /><i>qui rassemble.</i></h1><p>Des plats généreux, préparés avec le feu et le cœur.</p><a className="hero-cta" href="#menu" onClick={(event) => { event.preventDefault(); setBookOpen(true); }}><span>Découvrir la carte</span><ChevronRight size={16} /></a><div className={`hero-hours ${status.open ? "is-open" : "is-closed"}`}><span className="hero-hours__door" aria-hidden="true" key={status.open ? "ouverte" : "fermee"}>{status.open ? <DoorOpen size={18} strokeWidth={1.9} /> : <DoorClosed size={18} strokeWidth={1.9} />}</span><span className="hero-hours__body"><strong>{status.label}</strong><span className="hero-hours__detail">{status.detail}</span></span></div></div>
         <div className="hero-dish"><img src={featuredDish.image} alt="Méchoui de mouton" /><span className="hero-dish__glow" /></div>
         <div className="header-motion-note" aria-hidden="true"><span className="header-motion-note__icon"><Flame size={14} /></span><span><strong>Chaque jour</strong><small>fait maison</small></span><i /><i /><i /></div>
       </header>
@@ -628,7 +630,7 @@ function App() {
           <a className="site-footer__top-link" href="#accueil">Haut de page <ChevronRight size={14} /></a>
         </div>
       </footer>
-      <nav className={`bottom-nav ${navVisible ? "is-visible" : "is-hidden"}`} aria-label="Navigation principale"><a href="#accueil" className={activeNav === "accueil" ? "is-active" : ""} aria-current={activeNav === "accueil" ? "page" : undefined} onFocus={() => setActiveNav("accueil")} onClick={() => setActiveNav("accueil")}><Home size={19} /><span>ACCUEIL</span></a><a href="#menu" className={activeNav === "menu" ? "is-active" : ""} aria-current={activeNav === "menu" ? "page" : undefined} onFocus={() => setActiveNav("menu")} onClick={(event) => { event.preventDefault(); setActiveNav("menu"); window.location.hash = "menu"; document.getElementById("popular-title")?.scrollIntoView({ behavior: "smooth" }); }}><UtensilsCrossed size={19} /><span>MENU</span></a><a href="#infos" className={activeNav === "infos" ? "is-active" : ""} aria-current={activeNav === "infos" ? "page" : undefined} onFocus={() => setActiveNav("infos")} onClick={() => setActiveNav("infos")}><Info size={19} /><span>INFOS</span></a></nav>
+      <nav className={`bottom-nav ${navVisible ? "is-visible" : "is-hidden"}`} aria-label="Navigation principale"><a href="#accueil" className={activeNav === "accueil" ? "is-active" : ""} aria-current={activeNav === "accueil" ? "page" : undefined} onFocus={() => setActiveNav("accueil")} onClick={() => setActiveNav("accueil")}><Home size={19} /><span>ACCUEIL</span></a><a href="#menu" className={activeNav === "menu" ? "is-active" : ""} aria-current={activeNav === "menu" ? "page" : undefined} onFocus={() => setActiveNav("menu")} onClick={(event) => { event.preventDefault(); setActiveNav("menu"); setBookOpen(true); }}><UtensilsCrossed size={19} /><span>MENU</span></a><a href="#infos" className={activeNav === "infos" ? "is-active" : ""} aria-current={activeNav === "infos" ? "page" : undefined} onFocus={() => setActiveNav("infos")} onClick={() => setActiveNav("infos")}><Info size={19} /><span>INFOS</span></a></nav>
       <ChatWidget
         dishes={dayDishes}
         allDishes={allDishes}
@@ -638,6 +640,18 @@ function App() {
         whatsappHref={whatsappLink}
       />
       {selectedDish && <DishDetails dish={selectedDish} onClose={() => setSelectedDish(null)} />}
+      {bookOpen && (
+        <MenuBook
+          menu={menuState}
+          days={days}
+          initialDay={activeDay}
+          hours={restaurantHours}
+          status={status}
+          formatPrice={formatPrice}
+          whatsappHref={whatsappLink}
+          onClose={() => setBookOpen(false)}
+        />
+      )}
     </div>
   );
 }
