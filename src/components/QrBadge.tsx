@@ -16,7 +16,7 @@ type Matrix = { size: number; path: string };
  * le code s'affiche immédiatement, et reste net à toutes les tailles.
  */
 function buildMatrix(url: string): Matrix {
-  const qr = QRCode.create(url, { errorCorrectionLevel: "M" });
+  const qr = QRCode.create(url, { errorCorrectionLevel: "Q" });
   const size = qr.modules.size;
   const data = qr.modules.data;
   const chunks: string[] = [];
@@ -84,6 +84,7 @@ export default function QrBadge() {
       >
         <span className="qr__frame">
           <QrSvg matrix={matrix} className="qr__img" />
+          <span className="qr__logo" aria-hidden="true"><ChefHat size={9} /></span>
         </span>
         <span className="qr__glow" aria-hidden="true" />
       </button>

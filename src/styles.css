@@ -1963,3 +1963,18 @@ html { background: #140f0d; }
   .qr__frame { height: 66px; padding: 5px; width: 66px; }
   .header-brand-lockup strong { font-size: 11px; }
 }
+/* Toque dorée au centre du QR : pastille blanche + liseré, assez petite pour rester scannable */
+.qr__logo {
+  border: 1.5px solid #fff8ef;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #ffffff, 0 2px 6px rgba(0, 0, 0, .25);
+  height: 15px;
+  width: 15px;
+}
+.qr__logo svg { height: 9px; width: 9px; }
+/* Toque dorée : taille réglée pour rester scannable */
+.qr__logo { height: 13px; width: 13px; }
+.qr__logo svg { height: 7px; width: 7px; }
+/* Toque un peu plus généreuse (niveau de correction Q) */
+.qr__logo { height: 15px; width: 15px; }
+.qr__logo svg { height: 8px; width: 8px; }
