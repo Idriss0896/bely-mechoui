@@ -6,7 +6,7 @@ type Props = {
   hint?: string;
   icon?: ReactNode;
   disabled?: boolean;
-  tone?: "coral" | "dark" | "green";
+  tone?: "coral" | "dark" | "green" | "whatsapp";
   className?: string;
   onConfirm: () => void;
 };

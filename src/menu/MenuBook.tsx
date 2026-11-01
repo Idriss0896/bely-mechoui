@@ -425,7 +425,7 @@ export default function MenuBook({ menu, days, initialDay, initialCategory = nul
                 <strong>{formatPrice(total(cart))}</strong>
               </div>
 
-              <SlideButton className="book-cart__slide" label="Commander" hint={cart.length ? "Glisse pour ouvrir WhatsApp" : "Choisis un plat"} icon={<WhatsAppIcon size={16} />} disabled={!cart.length} onConfirm={submitOrder} />
+              <SlideButton className="book-cart__slide" label="Commander" hint={cart.length ? "Glisse pour ouvrir WhatsApp" : "Choisis un plat"} icon={<WhatsAppIcon size={19} />} tone="whatsapp" disabled={!cart.length} onConfirm={submitOrder} />
             </div>
           </section>
 
@@ -556,7 +556,7 @@ export default function MenuBook({ menu, days, initialDay, initialCategory = nul
                   <strong>{formatPrice(total(cart))}</strong>
                 </div>
 
-                <SlideButton className="cart-sheet__slide" label="Envoyer sur WhatsApp" hint={cart.length ? "Glisse pour confirmer" : "Choisis un plat"} icon={<WhatsAppIcon size={16} />} disabled={!cart.length} onConfirm={submitOrder} />
+                <SlideButton className="cart-sheet__slide" label="Envoyer sur WhatsApp" hint={cart.length ? "Glisse pour confirmer" : "Choisis un plat"} icon={<WhatsAppIcon size={19} />} tone="whatsapp" disabled={!cart.length} onConfirm={submitOrder} />
                 <p className="cart-sheet__note">Le restaurant reçoit le récapitulatif sur WhatsApp et confirme ton plat.</p>
               </>
             )}
