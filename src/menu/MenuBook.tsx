@@ -3,6 +3,7 @@ import { Check, ChefHat, ChevronLeft, ChevronRight, Clock3, CookingPot, CupSoda,
 import type { Dish, DayKey } from "../data/menu";
 import { buildOrderMessage, type CartLine } from "../chat/knowledge";
 import SlideButton from "../components/SlideButton";
+import WhatsAppIcon from "../components/WhatsAppIcon";
 import { savePendingOrder } from "../offline/pendingOrder";
 import { imageSet, imageUrl } from "../data/images";
 
@@ -170,7 +171,7 @@ export default function MenuBook({ menu, days, initialDay, initialCategory = nul
       return;
     }
     setOfflineQueued(false);
-    window.open(whatsappHref(message), "_blank", "noopener,noreferrer");
+    window.location.href = whatsappHref(message);
   }
 
   const others = selected ? dishes.filter((dish) => dish.name !== selected.name) : [];
@@ -313,7 +314,7 @@ export default function MenuBook({ menu, days, initialDay, initialCategory = nul
                       onClick={() => openDish(dish)}
                     >
                       <span className="book-card__media">
-                        <img src={imageUrl(dish.image, 520)} srcSet={imageSet(dish.image, [360, 520, 720]) || undefined} sizes="(max-width: 860px) 45vw, 240px" alt={dish.name} loading="lazy" decoding="async" />
+                        <img src={imageUrl(dish.image, 520)} srcSet={imageSet(dish.image, [360, 520, 720]) || undefined} sizes="(max-width: 860px) 45vw, 240px" alt={dish.name} loading={index < 6 ? "eager" : "lazy"} decoding="async" onError={(event) => { event.currentTarget.src = "/logo-bely-mechoui.jpg"; }} />
                         {inCart && <span className="book-card__badge" aria-label={`${inCart.qty} dans la commande`}>{inCart.qty}</span>}
                         {dish.unavailable && <span className="book-card__off">Indisponible</span>}
                       </span>
@@ -424,7 +425,7 @@ export default function MenuBook({ menu, days, initialDay, initialCategory = nul
                 <strong>{formatPrice(total(cart))}</strong>
               </div>
 
-              <SlideButton className="book-cart__slide" label="Commander" hint={cart.length ? "Glisse pour confirmer" : "Choisis un plat"} icon={<Check size={16} />} disabled={!cart.length} onConfirm={submitOrder} />
+              <SlideButton className="book-cart__slide" label="Commander" hint={cart.length ? "Glisse pour ouvrir WhatsApp" : "Choisis un plat"} icon={<WhatsAppIcon size={16} />} disabled={!cart.length} onConfirm={submitOrder} />
             </div>
           </section>
 
@@ -555,7 +556,7 @@ export default function MenuBook({ menu, days, initialDay, initialCategory = nul
                   <strong>{formatPrice(total(cart))}</strong>
                 </div>
 
-                <SlideButton className="cart-sheet__slide" label="Envoyer la commande" hint={cart.length ? "Glisse pour confirmer" : "Choisis un plat"} disabled={!cart.length} onConfirm={submitOrder} />
+                <SlideButton className="cart-sheet__slide" label="Envoyer sur WhatsApp" hint={cart.length ? "Glisse pour confirmer" : "Choisis un plat"} icon={<WhatsAppIcon size={16} />} disabled={!cart.length} onConfirm={submitOrder} />
                 <p className="cart-sheet__note">Le restaurant reçoit le récapitulatif sur WhatsApp et confirme ton plat.</p>
               </>
             )}

@@ -12,6 +12,20 @@ export function devApi() {
     name: "bely-dev-api",
     apply: "serve",
     configureServer(server) {
+      // Photos : même proxy que la production (`/media/*` → Unsplash).
+      server.middlewares.use("/media", async (req, res) => {
+        try {
+          const upstream = await fetch(`https://images.unsplash.com${req.url}`);
+          res.statusCode = upstream.status;
+          res.setHeader("Content-Type", upstream.headers.get("content-type") ?? "image/jpeg");
+          res.setHeader("Cache-Control", "public, max-age=86400");
+          res.end(Buffer.from(await upstream.arrayBuffer()));
+        } catch {
+          res.statusCode = 502;
+          res.end();
+        }
+      });
+
       for (const route of ROUTES) {
         const moduleId = `${route}.js`;
 

@@ -13,7 +13,9 @@ function readSubscription(value) {
   const endpoint = typeof value.endpoint === "string" ? value.endpoint : "";
   const p256dh = value.keys?.p256dh;
   const auth = value.keys?.auth;
-  if (!endpoint.startsWith("https://") || typeof p256dh !== "string" || typeof auth !== "string") return null;
+  if (!endpoint.startsWith("https://") || endpoint.length > 900) return null;
+  if (typeof p256dh !== "string" || p256dh.length < 20 || p256dh.length > 300) return null;
+  if (typeof auth !== "string" || auth.length < 8 || auth.length > 120) return null;
   return { endpoint, p256dh, auth };
 }
 

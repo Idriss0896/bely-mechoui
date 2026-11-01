@@ -68,6 +68,38 @@ function normalizedStamp(updatedAt) {
   return updatedAt ? String(updatedAt) : "empty";
 }
 
+/** Limite les tentatives de connexion : 5 essais, puis 10 minutes d'attente. */
+const loginAttempts = new Map();
+const MAX_ATTEMPTS = 5;
+const BLOCK_MS = 10 * 60 * 1000;
+
+function clientIp(request) {
+  const forwarded = request.headers["x-forwarded-for"];
+  const first = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+  return String(first ?? "").split(",")[0].trim() || "local";
+}
+
+function loginBlocked(ip) {
+  const entry = loginAttempts.get(ip);
+  if (!entry) return false;
+  if (entry.until > Date.now()) return true;
+  loginAttempts.delete(ip);
+  return false;
+}
+
+function recordAttempt(ip, accepted) {
+  if (accepted) {
+    loginAttempts.delete(ip);
+    return;
+  }
+  const entry = loginAttempts.get(ip) ?? { count: 0, until: 0 };
+  entry.count += 1;
+  if (entry.count >= MAX_ATTEMPTS) {
+    entry.until = Date.now() + BLOCK_MS;
+    entry.count = 0;
+  }
+  loginAttempts.set(ip, entry);
+}
 function readBody(request) {
   if (typeof request.body === "string") {
     try {
@@ -134,11 +166,17 @@ export default async function handler(request, response) {
         return response.status(200).json({ ok: true, ...issueToken(hash) });
       }
 
+      const ip = clientIp(request);
+      if (loginBlocked(ip)) {
+        return response.status(429).json({ error: "Trop de tentatives : réessaie dans quelques minutes" });
+      }
+
       const stored = await storedPassword();
       const expected = process.env.ADMIN_PASSWORD ?? "";
       const accepted = stored
         ? verifyPassword(body.password, stored)
         : Boolean(expected) && safeEqual(body.password ?? "", expected);
+      recordAttempt(ip, accepted);
       if (!accepted) {
         return response.status(401).json({ error: "Mot de passe incorrect" });
       }
@@ -151,6 +189,9 @@ export default async function handler(request, response) {
       }
 
       const body = readBody(request);
+      if (JSON.stringify(body).length > 3_500_000) {
+        return response.status(413).json({ error: "Contenu trop volumineux" });
+      }
       const { menu, categories, hours, images } = body;
 
       if (!menuIsValid(menu) || !Array.isArray(categories) || categories.some((category) => typeof category !== "string")) {

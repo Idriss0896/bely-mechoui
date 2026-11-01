@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/media/(.*)",
+      "destination": "https://images.unsplash.com/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
@@ -18,6 +22,10 @@
           "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://images.unsplash.com; connect-src 'self'; worker-src 'self'; manifest-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'"
         }
       ]
+    },
+    {
+      "source": "/media/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
     },
     {
       "source": "/assets/(.*)",

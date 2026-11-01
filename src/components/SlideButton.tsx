@@ -37,14 +37,16 @@ export default function SlideButton({ label, hint = "Glisse pour confirmer", ico
   }, [measure]);
 
   const finish = () => {
+    if (done) return;
     setDone(true);
     setProgress(1);
     if (navigator.vibrate) navigator.vibrate([12, 40, 18]);
+    // Confirmé immédiatement : le navigateur autorise alors l'ouverture de WhatsApp.
+    onConfirm();
     window.setTimeout(() => {
-      onConfirm();
       setDone(false);
       setProgress(0);
-    }, 260);
+    }, 380);
   };
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
