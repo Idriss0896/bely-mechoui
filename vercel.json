@@ -1,7 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/media/(.*)",
+      "source": "/media/(photo-.*)",
       "destination": "https://images.unsplash.com/$1"
     },
     {
