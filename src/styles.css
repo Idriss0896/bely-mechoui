@@ -1050,7 +1050,7 @@ html, body { overflow-x: clip; }
   overscroll-behavior: contain;
   padding: clamp(16px, 4vw, 44px);
   position: fixed;
-  z-index: 140;
+  z-index: 260;
 }
 .detail-sheet {
   animation: detail-pop .44s cubic-bezier(.22, 1, .36, 1) both;
@@ -1369,7 +1369,7 @@ body.book-open .bottom-nav { opacity: 0 !important; pointer-events: none; visibi
   overflow: hidden;
   padding: 24px;
   position: fixed;
-  z-index: 90;
+  z-index: 240;
 }
 @keyframes book-fade { from { opacity: 0; } to { opacity: 1; } }
 .book-overlay__glow { background: radial-gradient(circle at 50% 8%, rgba(233, 182, 111, .18), transparent 55%); inset: 0; pointer-events: none; position: absolute; }
@@ -1898,7 +1898,7 @@ body.book-open .bottom-nav { opacity: 0 !important; pointer-events: none; visibi
   justify-content: center;
   padding: 20px;
   position: fixed;
-  z-index: 140;
+  z-index: 270;
 }
 @keyframes qr-fade { from { opacity: 0; } to { opacity: 1; } }
 .qr-modal {

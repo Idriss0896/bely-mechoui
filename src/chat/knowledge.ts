@@ -60,7 +60,7 @@ const total = (cart: CartLine[]) => cart.reduce((sum, line) => sum + line.price 
 
 /** Budget exprimé dans la phrase : « moins de 3 000 F », « max 5000 », « budget 2500 ». */
 function parseBudget(text: string): number | null {
-  const match = text.match(/(?:moins de|maximum|max|budget|sous|pour)\s*(\d[\d\s]{0,8})/);
+  const match = text.match(/(?:moins de|maximum|max|budget|sous)\s*(\d[\d\s]{0,8})/);
   if (!match) return null;
   const value = Number(match[1].replace(/\s+/g, ""));
   return Number.isFinite(value) && value > 0 ? value : null;
