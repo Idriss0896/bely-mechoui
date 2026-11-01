@@ -157,15 +157,15 @@ export function useNotifications() {
   // Badge sur l'icône de l'application (Chrome / Edge / Android).
   useEffect(() => {
     if (!("setAppBadge" in navigator)) return;
-    if (unread > 0) void navigator.setAppBadge(unread);
-    else void navigator.clearAppBadge?.();
+    if (unread > 0) void navigator.setAppBadge(unread).catch(() => undefined);
+    else void Promise.resolve(navigator.clearAppBadge?.()).catch(() => undefined);
   }, [unread]);
 
   const markAllRead = useCallback(() => {
     const latest = items.length ? items[0].id : 0;
     if (!latest) return;
     writeSeen(latest);
-    if ("clearAppBadge" in navigator) void navigator.clearAppBadge?.();
+    void Promise.resolve(navigator.clearAppBadge?.()).catch(() => undefined);
     navigator.serviceWorker?.controller?.postMessage({ type: "bely-badge-clear" });
   }, [items]);
 
