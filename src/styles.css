@@ -799,16 +799,106 @@ h2 { font-size: clamp(25px, 4vw, 33px); letter-spacing: -.035em; line-height: 1;
   .header-motion-note { display: none; }
 }
 
-/* Boutons du bloc « Nous trouver » : grille lisible, couleurs par action */
-.visit-card__actions { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 18px; }
-.visit-action { align-items: center; border: 1px solid transparent; border-radius: 16px; display: inline-flex; font-size: 13px; font-weight: 700; gap: 8px; justify-content: center; min-height: 50px; padding: 12px 14px; transition: box-shadow .2s, transform .2s, background .2s; }
-.visit-action:hover { box-shadow: 0 12px 24px rgba(33,27,24,.14); transform: translateY(-2px); }
-.visit-action svg { flex: 0 0 auto; }
-.visit-action--wa { background: #25d366; box-shadow: 0 10px 22px rgba(37,211,102,.28); color: #06240f; grid-column: 1 / -1; }
-.visit-action--wa:hover { background: #2ee070; }
-.visit-action--call { background: var(--ink); color: #fff8ef; }
-.visit-action--map { background: #fff; border-color: var(--line); color: var(--ink); }
-.visit-action--fb { background: #eef2f8; border-color: #dbe3ef; color: #17427a; grid-column: 1 / -1; }
+/* Boutons du bloc « Nous trouver » : style iOS, contours doux et couleurs des marques */
+.visit-card__actions { display: grid; gap: 11px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 20px; }
+.visit-action {
+  -webkit-tap-highlight-color: transparent;
+  align-items: center;
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: 18px;
+  cursor: pointer;
+  display: inline-flex;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  gap: 9px;
+  justify-content: center;
+  letter-spacing: .01em;
+  min-height: 54px;
+  overflow: hidden;
+  padding: 13px 16px;
+  position: relative;
+  text-decoration: none;
+  transition: background .2s ease, border-color .2s ease, box-shadow .22s ease, transform .18s ease;
+}
+.visit-action::after {
+  border-radius: inherit;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+.visit-action svg {
+  background: rgba(255, 255, 255, .18);
+  border-radius: 50%;
+  box-sizing: content-box;
+  flex: 0 0 auto;
+  height: 16px;
+  padding: 6px;
+  position: relative;
+  width: 16px;
+  z-index: 1;
+}
+.visit-action:hover { transform: translateY(-2px); }
+.visit-action:active { transform: translateY(0) scale(.975); }
+.visit-action:focus-visible { outline: 3px solid rgba(233, 182, 111, .55); outline-offset: 3px; }
+
+/* WhatsApp : le vert du logo, en dégradé profond */
+.visit-action--wa {
+  background: linear-gradient(160deg, #32e678 0%, #25d366 46%, #12a854 100%);
+  border-color: rgba(8, 96, 48, .28);
+  box-shadow: 0 10px 24px rgba(18, 168, 84, .32), 0 2px 5px rgba(18, 168, 84, .2);
+  color: #fff;
+  grid-column: 1 / -1;
+  text-shadow: 0 1px 1px rgba(0, 66, 30, .22);
+}
+.visit-action--wa:hover {
+  background: linear-gradient(160deg, #46ee89 0%, #2bdc6d 46%, #16b75c 100%);
+  box-shadow: 0 16px 30px rgba(18, 168, 84, .38), 0 3px 7px rgba(18, 168, 84, .22);
+}
+
+/* Appeler : le noir chaleureux de la maison */
+.visit-action--call {
+  background: linear-gradient(160deg, #3b2c24 0%, #271f1a 55%, #1a1411 100%);
+  border-color: rgba(255, 248, 239, .1);
+  box-shadow: 0 10px 22px rgba(33, 27, 24, .24), 0 2px 4px rgba(33, 27, 24, .14);
+  color: #fff8ef;
+}
+.visit-action--call:hover {
+  background: linear-gradient(160deg, #4a382e 0%, #2e241e 55%, #1f1814 100%);
+  box-shadow: 0 16px 28px rgba(33, 27, 24, .3);
+}
+
+/* Itinéraire : surface claire, contour net */
+.visit-action--map {
+  background: linear-gradient(180deg, #ffffff 0%, #f8f2e9 100%);
+  border-color: rgba(33, 27, 24, .13);
+  box-shadow: 0 8px 18px rgba(33, 27, 24, .08), 0 1px 2px rgba(33, 27, 24, .05);
+  color: var(--ink);
+}
+.visit-action--map svg { background: rgba(33, 27, 24, .06); color: var(--coral-dark); }
+.visit-action--map:hover {
+  background: #fff;
+  border-color: rgba(196, 74, 50, .3);
+  box-shadow: 0 14px 26px rgba(33, 27, 24, .12);
+}
+
+/* Facebook : le bleu du logo */
+.visit-action--fb {
+  background: linear-gradient(160deg, #4aa8ff 0%, #1877f2 55%, #0d5fce 100%);
+  border-color: rgba(8, 66, 148, .3);
+  box-shadow: 0 10px 24px rgba(24, 119, 242, .3), 0 2px 5px rgba(24, 119, 242, .2);
+  color: #fff;
+  grid-column: 1 / -1;
+  text-shadow: 0 1px 1px rgba(6, 45, 100, .2);
+}
+.visit-action--fb:hover {
+  background: linear-gradient(160deg, #5cb4ff 0%, #1f82ff 55%, #0f68dc 100%);
+  box-shadow: 0 16px 30px rgba(24, 119, 242, .36);
+}
+
 @media (max-width: 380px) {
   .visit-card__actions { grid-template-columns: 1fr; }
   .visit-action--wa, .visit-action--fb { grid-column: auto; }
@@ -823,10 +913,11 @@ h2 { font-size: clamp(25px, 4vw, 33px); letter-spacing: -.035em; line-height: 1;
 /* Priorité de couleur pour les boutons du bloc « Nous trouver » */
 .visit-card__details a.visit-action { color: var(--ink); }
 .visit-card__details a.visit-action svg { color: inherit; }
-.visit-card__details a.visit-action--wa { color: #06240f; }
+.visit-card__details a.visit-action--wa { color: #fff; }
 .visit-card__details a.visit-action--call { color: #fff8ef; }
 .visit-card__details a.visit-action--map { color: var(--ink); }
-.visit-card__details a.visit-action--fb { color: #17427a; }
+.visit-card__details a.visit-action--map svg { color: var(--coral-dark); }
+.visit-card__details a.visit-action--fb { color: #fff; }
 
 /* Bouton assistant : toque du chef, doré, vivant */
 .chat-fab { background: var(--gold); border: 0; border-radius: 999px; box-shadow: 0 16px 36px rgba(233,182,111,.45), 0 4px 10px rgba(33,27,24,.25); color: var(--ink); font-size: 13px; gap: 9px; padding: 13px 20px; transition: background .2s ease, box-shadow .25s ease, transform .2s ease; }
