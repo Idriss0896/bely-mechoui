@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Check, ChefHat, ChevronLeft, ChevronRight, Clock3, CookingPot, CupSoda, Flame, Minus, Plus, Salad, Sandwich, ShoppingBag, Sparkles, X } from "lucide-react";
+import { Check, ChefHat, ChevronLeft, ChevronRight, Clock3, CookingPot, CupSoda, Flame, Minus, Plus, Salad, Sandwich, ShoppingBag, X } from "lucide-react";
 import type { Dish, DayKey } from "../data/menu";
 import { buildOrderMessage, type CartLine } from "../chat/knowledge";
 import { imageSet, imageUrl } from "../data/images";
@@ -222,7 +222,7 @@ export default function MenuBook({ menu, days, initialDay, initialCategory = nul
       for (const dish of group.items) list.push({ kind: "dish", dish, single: group.items.length === 1 });
     }
     if (staples.length) {
-      list.push({ kind: "head", key: "staples", label: "Toujours au menu", count: staples.length, icon: <Sparkles size={12} />, staples: true });
+      list.push({ kind: "head", key: "staples", label: "Toujours au menu", count: staples.length, icon: <Flame size={12} />, staples: true });
       for (const dish of staples) list.push({ kind: "dish", dish, single: false });
     }
     return list;

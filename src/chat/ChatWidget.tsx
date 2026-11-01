@@ -23,12 +23,16 @@ type Message = {
 
 const PENDING_KEY = "bely-commande-en-attente";
 
-const SUGGESTIONS = ["La carte du jour", "Horaires", "Où êtes-vous ?", "Commander"];
+const SUGGESTIONS = ["Plat du jour", "Moins de 6 000 F", "Boissons", "Ma commande"];
 
 const WELCOME: Message = {
   id: 1,
   role: "bot",
-  text: "Bonjour et bienvenue chez Bely Mechoui ! Je peux te donner les horaires, la carte, l'adresse, ou prendre ta commande.",
+  text: "Bonjour et bienvenue chez Bely Mechoui ! Je suis ton assistant : dis-moi ton envie ou ton budget, et je t'aide à composer ta commande.",
+  actions: [
+    { label: "Voir la carte", kind: "menu" },
+    { label: "Ma commande", kind: "recap" },
+  ],
 };
 
 export default function ChatWidget({ dishes, allDishes, status, hours, formatPrice, whatsappHref }: Props) {
@@ -286,7 +290,7 @@ export default function ChatWidget({ dishes, allDishes, status, hours, formatPri
 
   return (
     <>
-      {hint && !open && <span className="chat-hint" role="status">Une question ? Je prends ta commande.</span>}
+      {hint && !open && <span className="chat-hint" role="status">Une question ? Je t'aide à choisir ton plat.</span>}
       <button className={`chat-fab ${open ? "is-open" : ""} ${pending ? "has-pending" : ""}`} type="button" onClick={toggleChat} aria-expanded={open} aria-controls="bely-chat" aria-label={open ? "Fermer l'assistant" : "Ouvrir l'assistant de commande"}>
         {open ? <X size={22} /> : <ChefHat size={26} />}
         {pending && !open && <i className="chat-fab__dot" aria-hidden="true" />}
@@ -295,59 +299,70 @@ export default function ChatWidget({ dishes, allDishes, status, hours, formatPri
       {open && (
         <section className="chat-panel" id="bely-chat" role="dialog" aria-modal="true" aria-labelledby="chat-title">
           <header className="chat-head">
-            <span className="chat-avatar"><ChefHat size={17} /></span>
+            <span className="chat-avatar"><ChefHat size={20} /></span>
             <div className="chat-identity">
               <strong id="chat-title">Assistant Bely</strong>
-              <small><i className={online ? "is-online" : ""} /> {online ? (status.open ? `Ouvert · ${status.detail}` : "Fermé · laisse un message") : "Hors ligne · commande possible"}</small>
+              <small><i className={online && status.open ? "is-online" : ""} /> {online ? (status.open ? "En ligne · prêt à t'aider" : "Fermé · laisse un message") : "Hors ligne · commande possible"}</small>
             </div>
-            <button className="chat-voice" type="button" onClick={() => setVoice((value) => !value)} aria-pressed={voice} aria-label={voice ? "Couper la lecture vocale" : "Activer la lecture vocale"}>
-              {voice ? <Volume2 size={17} /> : <VolumeX size={17} />}
-            </button>
-            <button className="chat-close" type="button" onClick={() => setOpen(false)} aria-label="Fermer la discussion"><X size={17} /></button>
+            <div className="chat-head__actions">
+              <button className="chat-voice" type="button" onClick={() => setVoice((value) => !value)} aria-pressed={voice} aria-label={voice ? "Couper la lecture vocale" : "Activer la lecture vocale"}>
+                {voice ? <Volume2 size={17} /> : <VolumeX size={17} />}
+              </button>
+              <button className="chat-close" type="button" onClick={() => setOpen(false)} aria-label="Fermer la discussion"><X size={17} /></button>
+            </div>
           </header>
 
-          <div className="chat-body" ref={listRef}>
+          <div className="chat-body" ref={listRef} aria-live="polite">
             <div className="chat-day">Aujourd'hui</div>
             {messages.map((message) => (
               <div className={`chat-msg chat-msg--${message.role}`} key={message.id}>
-                <p>{message.text}</p>
-                {message.recap && (<>
-                  <ul className="chat-recap">
-                    {message.recap.map((line) => (
-                      <li key={line.name}><span>{line.qty} × {line.name}</span><em>{formatPrice(line.price * line.qty)}</em></li>
-                    ))}
-                    <li className="chat-recap__total"><span>Total</span><em>{formatPrice(message.recap.reduce((sum, line) => sum + line.price * line.qty, 0))}</em></li>
-                  </ul>
-                  <ShareRow compact label="Partager ma commande" text={buildShareMessage(message.recap, formatPrice)} />
-                </>)}
-                {message.actions && (
-                  <div className="chat-actions">
-                    {message.actions.map((action) => (
-                      <button key={action.label} type="button" className={action.kind === "confirm" || action.kind === "send" ? "chat-chip chat-chip--primary" : "chat-chip"} onClick={() => handleAction(action)}>
-                        {(action.kind === "confirm" || action.kind === "send") && <Check size={13} />}
-                        {action.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                {message.role === "bot" && <span className="chat-msg__avatar" aria-hidden="true"><ChefHat size={13} /></span>}
+                <div className="chat-msg__content">
+                  <p>{message.text}</p>
+                  {message.recap && (<>
+                    <ul className="chat-recap">
+                      {message.recap.map((line) => (
+                        <li key={line.name}><span>{line.qty} × {line.name}</span><em>{formatPrice(line.price * line.qty)}</em></li>
+                      ))}
+                      <li className="chat-recap__total"><span>Total</span><em>{formatPrice(message.recap.reduce((sum, line) => sum + line.price * line.qty, 0))}</em></li>
+                    </ul>
+                    <ShareRow compact label="Partager ma commande" text={buildShareMessage(message.recap, formatPrice)} />
+                  </>)}
+                  {message.actions && (
+                    <div className="chat-actions">
+                      {message.actions.map((action) => (
+                        <button key={action.label} type="button" className={action.kind === "confirm" || action.kind === "send" ? "chat-chip chat-chip--primary" : "chat-chip"} onClick={() => handleAction(action)}>
+                          {(action.kind === "confirm" || action.kind === "send") && <Check size={13} />}
+                          {action.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
-            {typing && <div className="chat-msg chat-msg--bot chat-typing"><i /><i /><i /></div>}
+            {typing && (
+              <div className="chat-msg chat-msg--bot chat-typing">
+                <span className="chat-msg__avatar" aria-hidden="true"><ChefHat size={13} /></span>
+                <span className="chat-typing__bubble"><i /><i /><i /></span>
+              </div>
+            )}
           </div>
 
-          {messages.length <= 2 && (
+          <div className="chat-quick">
+            <span className="chat-quick__label">Idées rapides</span>
             <div className="chat-suggestions" aria-label="Suggestions">
               {SUGGESTIONS.map((suggestion) => (
                 <button key={suggestion} type="button" className="chat-chip" onClick={() => send(suggestion)}>{suggestion}</button>
               ))}
             </div>
-          )}
+          </div>
 
           <form className="chat-form" onSubmit={(event) => { event.preventDefault(); send(input); }}>
             <button type="button" className={`chat-mic ${listening ? "is-listening" : ""}`} onClick={startListening} aria-label={listening ? "Arrêter l'écoute" : "Parler à l'assistant"} aria-pressed={listening}>
               <Mic size={17} />
             </button>
-            <input ref={inputRef} value={input} onChange={(event) => setInput(event.target.value)} placeholder="Écris ta question ou ta commande…" aria-label="Message" autoComplete="off" />
+            <input ref={inputRef} value={input} onChange={(event) => setInput(event.target.value)} placeholder="Écris ton envie ou ton budget…" aria-label="Message" autoComplete="off" />
             <button type="submit" className="chat-send" aria-label="Envoyer"><Send size={17} /></button>
           </form>
         </section>

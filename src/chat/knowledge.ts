@@ -58,6 +58,30 @@ function findDish(text: string, dishes: Dish[]): Dish | undefined {
 
 const total = (cart: CartLine[]) => cart.reduce((sum, line) => sum + line.price * line.qty, 0);
 
+/** Budget exprimé dans la phrase : « moins de 3 000 F », « max 5000 », « budget 2500 ». */
+function parseBudget(text: string): number | null {
+  const match = text.match(/(?:moins de|maximum|max|budget|sous|pour)\s*(\d[\d\s]{0,8})/);
+  if (!match) return null;
+  const value = Number(match[1].replace(/\s+/g, ""));
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+const CATEGORY_HINTS = [
+  { key: "boisson", label: "les boissons", words: /boisson|boire|jus|soda|eau|bissap|gingembre/ },
+  { key: "grillade", label: "les grillades", words: /grillade|grille|brochett|mechoui|agneau|mouton/ },
+  { key: "accompagnement", label: "les accompagnements", words: /accompagn|garniture|frite|riz|salade|attieke/ },
+  { key: "fast", label: "le fast-food", words: /fast|burger|sandwich|shawarma|tacos/ },
+];
+
+/** Plats dont la catégorie ou le nom correspond à l'envie exprimée. */
+function categoryDishes(list: Dish[], key: string): Dish[] {
+  return list.filter((dish) => normalize(dish.category).includes(key) || normalize(dish.name).includes(key));
+}
+
+function shortList(dishes: Dish[], formatPrice: (value: number) => string) {
+  return dishes.slice(0, 5).map((dish) => `${dish.name} — ${formatPrice(dish.price)}`).join("\n");
+}
+
 function dishActions(dishes: Dish[], exclude?: string): ChatAction[] {
   return dishes
     .filter((dish) => dish.name !== exclude)
@@ -177,9 +201,44 @@ export function answer(input: string, context: ChatContext): ChatAnswer {
     return { text: "Pas de souci. Je reste là si tu as besoin des horaires, de la carte ou de l'adresse." };
   }
 
+  // Budget : « moins de 3 000 F », « max 5000 »…
+  const budget = parseBudget(text);
+  if (budget) {
+    const affordable = servable
+      .filter((dish) => dish.price <= budget)
+      .sort((a, b) => a.price - b.price);
+    if (!affordable.length) {
+      const cheapest = [...servable].sort((a, b) => a.price - b.price).slice(0, 3);
+      return {
+        text: `Avec ${formatPrice(budget)}, je n'ai pas de plat à te proposer aujourd'hui. Voici les plus accessibles :\n${shortList(cheapest, formatPrice)}`,
+        actions: dishActions(cheapest),
+      };
+    }
+    return {
+      text: `Avec ${formatPrice(budget)}, voici ce que je te conseille :\n${shortList(affordable, formatPrice)}\n\nDis-moi le plat qui te tente, je l'ajoute à ta commande.`,
+      actions: dishActions(affordable),
+    };
+  }
+
+  // Envie précise : boissons, grillades, accompagnements…
+  const hint = CATEGORY_HINTS.find((entry) => entry.words.test(text));
+  if (hint) {
+    const matches = categoryDishes(servable, hint.key);
+    const selection = matches.length ? matches : servable;
+    if (!selection.length) {
+      return { text: "La carte du jour est en cours de mise à jour. Appelle-nous au +223 72 84 16 16." };
+    }
+    return {
+      text: matches.length
+        ? `Côté ${hint.label}, voici ce que nous servons :\n${shortList(matches, formatPrice)}\n\nDis-moi le plat qui te tente, je l'ajoute à ta commande.`
+        : `Je n'ai pas de plat dans cette famille aujourd'hui. Voici ce que nous servons :\n${shortList(selection, formatPrice)}`,
+      actions: dishActions(selection),
+    };
+  }
+
   // Carte et prix.
   if (has(text, /menu|carte|plat|manger|specialite|boisson|grillade|accompagnement|boeuf|poulet|riz|salade|burger|bissap/)) {
-    const list = servable.slice(0, 5).map((dish) => `${dish.name} — ${formatPrice(dish.price)}`).join("\n");
+    const list = shortList(servable, formatPrice);
     return {
       text: servable.length
         ? `Aujourd'hui, nous servons :\n${list}\n\nDis-moi le plat qui te tente, je l'ajoute à ta commande.`

@@ -2,15 +2,10 @@ import { neon } from "@neondatabase/serverless";
 import { createHash, timingSafeEqual } from "node:crypto";
 import webpush from "web-push";
 import { adminIsValid } from "./_session.js";
+import { pushConfig } from "./_push.js";
 
 const connectionString = process.env.DATABASE_URL;
 const sql = connectionString ? neon(connectionString) : null;
-
-const publicKey = process.env.VAPID_PUBLIC_KEY;
-const privateKey = process.env.VAPID_PRIVATE_KEY;
-const subject = process.env.VAPID_SUBJECT ?? "https://bely-mechoui.vercel.app";
-const pushReady = Boolean(publicKey && privateKey);
-if (pushReady) webpush.setVapidDetails(subject, publicKey, privateKey);
 
 /** Comparaison à temps constant pour ne pas fuiter le mot de passe. */
 function passwordMatches(candidate) {
@@ -26,7 +21,7 @@ const readBody = (request) =>
 
 /** Envoie la notification à tous les appareils abonnés. */
 async function broadcast(notification) {
-  if (!pushReady) return { configured: false, sent: 0, failed: 0 };
+  if (!(await pushConfig())) return { configured: false, sent: 0, failed: 0 };
   const rows = await sql`select endpoint, p256dh, auth from bely_push_subscriptions`;
   if (!rows.length) return { configured: true, sent: 0, failed: 0 };
 

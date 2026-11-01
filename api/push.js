@@ -1,9 +1,8 @@
 import { neon } from "@neondatabase/serverless";
+import { pushConfig } from "./_push.js";
 
 const connectionString = process.env.DATABASE_URL;
 const sql = connectionString ? neon(connectionString) : null;
-
-const publicKey = process.env.VAPID_PUBLIC_KEY ?? null;
 
 const readBody = (request) =>
   typeof request.body === "string" ? JSON.parse(request.body || "{}") : (request.body ?? {});
@@ -27,10 +26,15 @@ export default async function handler(request, response) {
 
   try {
     if (request.method === "GET") {
-      return response.status(200).json({ configured: Boolean(publicKey), publicKey });
+      const config = await pushConfig();
+      return response.status(200).json({ configured: Boolean(config), publicKey: config?.publicKey ?? null });
     }
 
     if (request.method === "POST") {
+      const config = await pushConfig();
+      if (!config) {
+        return response.status(503).json({ configured: false, error: "Clés VAPID manquantes" });
+      }
       const body = readBody(request);
       const subscription = readSubscription(body.subscription);
       if (!subscription) {
