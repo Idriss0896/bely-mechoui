@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Check, ChefHat, ChevronLeft, ChevronRight, Clock3, CookingPot, CupSoda, Flame, Minus, Plus, Salad, Sandwich, ShoppingBag, X } from "lucide-react";
 import type { Dish, DayKey } from "../data/menu";
 import { buildOrderMessage, type CartLine } from "../chat/knowledge";
+import SlideButton from "../components/SlideButton";
+import { savePendingOrder } from "../offline/pendingOrder";
 import { imageSet, imageUrl } from "../data/images";
 
 type MenuState = Record<DayKey, Dish[]>;
@@ -61,6 +63,7 @@ export default function MenuBook({ menu, days, initialDay, initialCategory = nul
   const [cart, setCart] = useState<CartLine[]>(readCart);
   const [turning, setTurning] = useState(false);
   const [sent, setSent] = useState(false);
+  const [offlineQueued, setOfflineQueued] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
 
   const dayIndex = days.findIndex((item) => item.key === day);
@@ -156,10 +159,19 @@ export default function MenuBook({ menu, days, initialDay, initialCategory = nul
     );
   }
 
-  const orderHref = useMemo(
-    () => (cart.length ? whatsappHref(buildOrderMessage(cart, formatPrice)) : ""),
-    [cart, formatPrice, whatsappHref],
-  );
+  /** Envoie la commande : WhatsApp en ligne, file d'attente hors ligne. */
+  function submitOrder() {
+    if (!cart.length) return;
+    const message = buildOrderMessage(cart, formatPrice);
+    setSent(true);
+    if (!navigator.onLine) {
+      savePendingOrder(message);
+      setOfflineQueued(true);
+      return;
+    }
+    setOfflineQueued(false);
+    window.open(whatsappHref(message), "_blank", "noopener,noreferrer");
+  }
 
   const others = selected ? dishes.filter((dish) => dish.name !== selected.name) : [];
 
@@ -412,19 +424,7 @@ export default function MenuBook({ menu, days, initialDay, initialCategory = nul
                 <strong>{formatPrice(total(cart))}</strong>
               </div>
 
-              <a
-                className={`book-cart__order ${cart.length ? "" : "is-disabled"}`}
-                href={cart.length ? orderHref : undefined}
-                target="_blank"
-                rel="noreferrer"
-                aria-disabled={!cart.length}
-                onClick={(event) => {
-                  if (!cart.length) event.preventDefault();
-                  else setSent(true);
-                }}
-              >
-                <Check size={16} /> Commander sur WhatsApp
-              </a>
+              <SlideButton className="book-cart__slide" label="Commander" hint={cart.length ? "Glisse pour confirmer" : "Choisis un plat"} icon={<Check size={16} />} disabled={!cart.length} onConfirm={submitOrder} />
             </div>
           </section>
 
@@ -525,8 +525,8 @@ export default function MenuBook({ menu, days, initialDay, initialCategory = nul
             {sent ? (
               <div className="cart-sheet__sent">
                 <span className="cart-sheet__check"><Check size={26} /></span>
-                <strong>Commande transmise</strong>
-                <p>WhatsApp est ouvert avec ton récapitulatif : il ne reste qu'à appuyer sur « Envoyer ».</p>
+                <strong>{offlineQueued ? "Commande gardée hors ligne" : "Commande transmise"}</strong>
+                <p>{offlineQueued ? "Pas de réseau pour l'instant : ta commande est enregistrée sur ton téléphone et partira dès le retour de la connexion." : "WhatsApp est ouvert avec ton récapitulatif : il ne reste qu'à appuyer sur « Envoyer »."}</p>
                 <button type="button" onClick={() => setCartOpen(false)}>Continuer la lecture</button>
               </div>
             ) : (
@@ -555,19 +555,7 @@ export default function MenuBook({ menu, days, initialDay, initialCategory = nul
                   <strong>{formatPrice(total(cart))}</strong>
                 </div>
 
-                <a
-                  className={`cart-sheet__order ${cart.length ? "" : "is-disabled"}`}
-                  href={cart.length ? orderHref : undefined}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-disabled={!cart.length}
-                  onClick={(event) => {
-                    if (!cart.length) event.preventDefault();
-                    else setSent(true);
-                  }}
-                >
-                  <Check size={17} /> Envoyer la commande
-                </a>
+                <SlideButton className="cart-sheet__slide" label="Envoyer la commande" hint={cart.length ? "Glisse pour confirmer" : "Choisis un plat"} disabled={!cart.length} onConfirm={submitOrder} />
                 <p className="cart-sheet__note">Le restaurant reçoit le récapitulatif sur WhatsApp et confirme ton plat.</p>
               </>
             )}

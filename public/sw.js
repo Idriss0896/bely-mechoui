@@ -1,4 +1,5 @@
-const CACHE_NAME = "bely-mechoui-v5";
+const CACHE_NAME = "bely-mechoui-v6";
+const MEDIA_CACHE = "bely-mechoui-medias-v1";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -12,7 +13,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then((cache) => Promise.allSettled(APP_SHELL.map((url) => cache.add(url))))
+      .then((cache) => Promise.allSettled([...APP_SHELL, "/api/menu"].map((url) => cache.add(url))))
       .then(() => self.skipWaiting()),
   );
 });
@@ -21,7 +22,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
+      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME && key !== MEDIA_CACHE).map((key) => caches.delete(key))))
       .then(() => self.clients.claim()),
   );
 });
@@ -31,7 +32,37 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;
+  // Polices et photos distantes : gardées pour l'affichage hors ligne.
+  if (url.origin !== self.location.origin) {
+    if (/fonts\.(googleapis|gstatic)\.com$|images\.unsplash\.com$/.test(url.host)) {
+      event.respondWith(
+        caches.match(request).then(
+          (cached) =>
+            cached ||
+            fetch(request)
+              .then((response) => {
+                if (response.ok) caches.open(MEDIA_CACHE).then((cache) => cache.put(request, response.clone()));
+                return response;
+              })
+              .catch(() => cached),
+        ),
+      );
+    }
+    return;
+  }
+  // La carte : réseau d'abord, dernière version connue hors ligne.
+  if (url.pathname === "/api/menu" && request.method === "GET") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
+          return response;
+        })
+        .catch(() => caches.match(request)),
+    );
+    return;
+  }
+
   if (url.pathname.startsWith("/api/")) return;
 
   // Navigation : réseau d'abord, cache en secours (évite de figer une ancienne version).
@@ -152,6 +183,16 @@ self.addEventListener("notificationclose", () => {
   /* Rien à faire : le badge reste tant que la notification n'est pas ouverte. */
 });
 
+// La page envoie la liste exacte des fichiers chargés : mise en cache pour le hors ligne.
+self.addEventListener("message", (event) => {
+  if (event.data?.type !== "bely-cache-urls" || !Array.isArray(event.data.urls)) return;
+  const urls = event.data.urls.filter((url) => typeof url === "string" && url.startsWith(self.location.origin));
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.allSettled(urls.map((url) => cache.add(url))),
+    ),
+  );
+});
 // Permet à la page de remettre le compteur à zéro une fois les nouvelles lues.
 self.addEventListener("message", (event) => {
   if (event.data?.type !== "bely-badge-clear") return;
