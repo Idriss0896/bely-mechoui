@@ -448,7 +448,7 @@ export default function MenuBook({ menu, days, initialDay, initialCategory = nul
       {/* Mobile : la commande flottante */}
       {phone && (
         <button type="button" className={`book-cart-fab ${cartCount ? "has-items" : ""} ${opened ? "is-ready" : ""}`} onClick={() => setCartOpen(true)}>
-          <ShoppingBag size={17} />
+          {cartCount > 0 ? <WhatsAppIcon size={17} /> : <ShoppingBag size={17} />}
           <span>Ma commande</span>
           {cartCount > 0 && <em>{formatPrice(total(cart))}</em>}
           {cartCount > 0 && <i className="book-cart-fab__count">{cartCount}</i>}
